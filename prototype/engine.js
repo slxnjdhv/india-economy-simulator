@@ -7,7 +7,7 @@
  */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) module.exports = factory();
-  else root.EconEngine = factory();
+  else { root.EconEngine = factory(); root.EconEngineFactory = factory; }
 })(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
 
@@ -31,6 +31,12 @@
     return h;
   }
   const clamp = (x, lo, hi) => Math.min(hi, Math.max(lo, x));
+  function gini(values) {
+    const a = Float64Array.from(values).sort();
+    let cum = 0, total = 0;
+    for (let i = 0; i < a.length; i++) { const x = Math.max(0, a[i]); cum += (i + 1) * x; total += x; }
+    return total > 0 ? (2 * cum) / (a.length * total) - (a.length + 1) / a.length : 0;
+  }
 
   const DEFAULTS = {
     seed: 28,
@@ -40,6 +46,7 @@
     burnIn: 120,                // months simulated before the game starts
     target: 0.04,              // RBI inflation target
     neutralRepo: 0.06, repo0: 0.06, rStarLearn: 0.05,
+    ruleInfl: 1.5, ruleU: 0.5,      // how strongly the RBI rule reacts to inflation and to unemployment
     loanSpread: 0.03, depSpread: 0.005,
     anchor: 0.5,               // how strongly expectations stick to the 4% target
     expLearn: 0.12,            // how fast expectations follow actual inflation
@@ -61,7 +68,7 @@
     if (!h) return sim.P.neutralRepo;
     sim.rStar += sim.P.rStarLearn * ((h.infl - sim.P.target) - 0.5 * (h.u - sim.P.uNatural));
     sim.rStar = clamp(sim.rStar, 0.02, 0.10);
-    const x = sim.rStar + 1.5 * (h.infl - sim.P.target) - 0.5 * (h.u - sim.P.uNatural);
+    const x = sim.rStar + sim.P.ruleInfl * (h.infl - sim.P.target) - sim.P.ruleU * (h.u - sim.P.uNatural);
     return Math.round(clamp(x, lo, hi) * 400) / 400;
   }
 
@@ -72,7 +79,10 @@
       this.t = -P.burnIn;
       this.repo = P.repo0;
       this.rStar = P.neutralRepo;
-      this.policyRule = null;
+      this.policyRule = null;          // null: repo set by the player; 'auto': RBI rule; or a function
+      this.taxRate = P.taxRate;        // tax on wages (player lever in budget scenarios)
+      this.govShare = P.govShare;      // government purchases as a share of normal output
+      this.shocks = (P.shocks || []).map(x => Object.assign({}, x));
 
       this.emp = new Int32Array(H).fill(-1);
       this.m = new Float64Array(H);
@@ -119,7 +129,7 @@
       for (let f = 0; f < F; f++) money += this.d[f];
       this.gov = -money; // the starting money stock is treated as past government spending
 
-      this.gUnits = P.govShare * nEmp * P.productivity;
+      this.baseUnits = nEmp * P.productivity;
       this.p0 = (1 + P.markup) * P.wage0 / P.productivity;
       this.pf = this.pn = this.p0;
       this.uLast = P.uNatural;
@@ -138,15 +148,34 @@
       for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); const x = a[i]; a[i] = a[j]; a[j] = x; }
       return a;
     }
+    // 0 before a shock, 1 while it lasts, then fading back to 0 during recovery
+    static shape(s, t) {
+      const end = s.start + s.months, rec = s.recover || 0;
+      if (t >= s.start && t < end) return 1;
+      if (t >= end && t < end + rec) return 1 - (t - end + 1) / (rec + 1);
+      return 0;
+    }
+    // supply shocks: a bad harvest (food firms) or costlier oil (all firms) cut output per worker
     shockFactor(f, t) {
       let k = 1;
-      for (const s of this.P.shocks) {
+      for (const s of this.shocks) {
+        if (s.type === 'confidence') continue;
         if (s.sector === 'food' && !this.isFood[f]) continue;
-        const end = s.start + s.months, rec = s.recover || 0;
-        if (t >= s.start && t < end) k *= 1 - s.depth;
-        else if (t >= end && t < end + rec) k *= 1 - s.depth * (1 - (t - end + 1) / (rec + 1));
+        k *= 1 - s.depth * Sim.shape(s, t);
       }
       return k;
+    }
+    // demand shocks: a global slowdown makes households and firms spend less
+    demandFactor(t) {
+      let k = 1;
+      for (const s of this.shocks) if (s.type === 'confidence') k *= 1 - s.depth * Sim.shape(s, t);
+      return k;
+    }
+    // the RBI's usual behaviour: meets every two months and moves at most 50 basis points
+    ruleStep() {
+      if (this.t % 2 !== 0) return;
+      const want = taylorRule(this, 0.02, 0.14);
+      this.repo = Math.round((this.repo + clamp(want - this.repo, -0.005, 0.005)) * 400) / 400;
     }
     rates() {
       const P = this.P;
@@ -176,17 +205,15 @@
       for (let f = 0; f < F; f++) lamEff[f] = this.lam[f] * this.shockFactor(f, t);
 
       // 2. policy: during warm-up an RBI-style rule steers the economy; from month 0 the player decides
-      if (t < 0 && t % 2 === 0) { // warm-up MPC: meets every two months, moves at most 50 basis points
-        const want = taylorRule(this, 0.02, 0.14);
-        this.repo = Math.round((this.repo + clamp(want - this.repo, -0.005, 0.005)) * 400) / 400;
-      }
-      else if (this.policyRule) this.repo = this.policyRule(this);
+      if (t < 0 || this.policyRule === 'auto') this.ruleStep();
+      else if (typeof this.policyRule === 'function') this.repo = this.policyRule(this);
       const rt = this.rates();
       const piE = this.piE, pim = Math.pow(1 + piE, 1 / 12) - 1;
       const nRealLoan = P.neutralRepo + P.loanSpread - P.target;
       const nRealDep = P.neutralRepo - P.depSpread - P.target;
-      const iFactor = clamp(1 - P.iSens * (rt.loan - piE - nRealLoan), 0.3, 1.5);
-      const aInc = clamp(P.aInc - P.cSens * (rt.deposit - piE - nRealDep), 0.75, 0.98);
+      const conf = this.demandFactor(t);
+      const iFactor = clamp(1 - P.iSens * (rt.loan - piE - nRealLoan), 0.3, 1.5) * (1 - 3 * (1 - conf));
+      const aInc = clamp(P.aInc - P.cSens * (rt.deposit - piE - nRealDep), 0.75, 0.98) * conf;
 
       // 3. firms plan output, wages and prices
       let r = R(1);
@@ -242,16 +269,16 @@
       for (let f = 0; f < F; f++) { const y = lamEff[f] * n[f]; inv[f] += y; Y += y; }
 
       // 7. wages, taxes and transfers
-      let wages = 0, employed = 0;
+      let wages = 0, employed = 0, taxes = 0, transfers = 0;
       for (let i = 0; i < H; i++) {
         const f = emp[i];
         if (f < 0) continue;
-        const pay = w[f], tax = pay * P.taxRate;
+        const pay = w[f], tax = pay * this.taxRate;
         d[f] -= pay; this.gov += tax; m[i] += pay - tax; inc[i] += pay - tax;
-        wages += pay; employed++;
+        wages += pay; employed++; taxes += tax;
       }
       const transfer = P.transferRatio * (employed ? wages / employed : P.wage0);
-      for (let i = 0; i < H; i++) if (emp[i] < 0) { this.gov -= transfer; m[i] += transfer; inc[i] += transfer; }
+      for (let i = 0; i < H; i++) if (emp[i] < 0) { this.gov -= transfer; m[i] += transfer; inc[i] += transfer; transfers += transfer; }
 
       // 8. goods market
       sales.fill(0); rev.fill(0); investSpent.fill(0);
@@ -281,9 +308,9 @@
         m[i] -= spent; consumption += spent;
       }
       // government buys non-food goods and services
-      const G = this.gUnits * this.pn;
+      const G = this.govShare * this.baseUnits * this.pn;
       let gSpent = 0;
-      for (let s = 0; s < 40 && G - gSpent > 1e-6; s++) gSpent += this.buyFrom([this.randFirm(r, false)], G - gSpent);
+      for (let s = 0; s < Math.max(40, 2 * F) && G - gSpent > 1e-6; s++) gSpent += this.buyFrom([this.randFirm(r, false)], G - gSpent);
       this.gov -= gSpent;
       // firms buy capital goods from non-food firms
       let I = 0;
@@ -343,10 +370,15 @@
       this.piAd += P.expLearn * (infl - this.piAd);
       this.piE = P.anchor * P.target + (1 - P.anchor) * this.piAd;
       this.uLast = u;
+      const gdp = consumption + I + gSpent;
+      const deficit = gSpent + transfers - taxes;
+      const wage = employed ? wages / employed : 0;
       const rec = {
-        t, repo: this.repo, loanRate: rt.loan, cpi, pfi: this.pf / this.p0, pni: this.pn / this.p0,
-        infl, foodInfl, coreInfl, u, Y, C: consumption, I, G: gSpent, piE: this.piE, aInc, iFactor,
-        wage: employed ? wages / employed : 0, residual, loans, money: money - this.gov - this.bankEq,
+        t, repo: this.repo, loanRate: rt.loan, taxRate: this.taxRate, govShare: this.govShare,
+        cpi, pfi: this.pf / this.p0, pni: this.pn / this.p0,
+        infl, foodInfl, coreInfl, u, Y, C: consumption, I, G: gSpent, gdp, piE: this.piE, aInc, iFactor,
+        wage, realWage: (wage / P.wage0) / cpi, deficit, defRatio: deficit / gdp, debtRatio: -this.gov / (12 * gdp),
+        gini: gini(m), residual, loans, money: money - this.gov - this.bankEq,
       };
       this.hist.push(rec);
       this.t++;
@@ -365,43 +397,148 @@
     }
   }
 
-  // ---------- the RBI Governor scenario ----------
-  const MONSOON = {
-    id: 'rbi-monsoon',
-    title: 'RBI Governor: The Failed Monsoon',
-    months: 24, meetingEvery: 2,
-    shocks: [{ sector: 'food', start: 3, months: 9, recover: 12, depth: 0.06 }],
+  // ---------- scenarios ----------
+  const SHOCKS = {
+    monsoon: { type: 'harvest', sector: 'food', months: 9, recover: 12, depth: 0.06, label: 'Monsoon fails' },
+    oil: { type: 'oil', sector: 'all', months: 10, recover: 12, depth: 0.035, label: 'Oil price spike' },
+    slowdown: { type: 'confidence', months: 12, recover: 12, depth: 0.035, label: 'Global slowdown' },
+  };
+  const shockAt = (key, start) => Object.assign({}, SHOCKS[key], { key, start });
+
+  const SCENARIOS = {
+    monsoon: {
+      id: 'monsoon', role: 'RBI Governor', title: 'The Failed Monsoon', months: 24, every: 2, levers: ['repo'],
+      shocks: [shockAt('monsoon', 3)],
+      blurb: 'Food prices jump after a bad harvest. Do you raise rates or look through it?',
+      news: [
+        [0, 'Your first meeting.', 'Inflation is close to the 4% target. The IMD forecasts a normal monsoon. Set the repo rate for the next two months.'],
+        [2, 'Weather alert.', 'Monsoon rains are running well below normal in July. Farmers are worried about the kharif crop.'],
+        [4, 'Monsoon fails.', 'Rainfall ends 18% below normal. Kharif output falls and vegetable and pulse prices are rising. Food is 46% of the CPI basket.'],
+        [8, 'Prices spreading?', 'Food inflation is high. Watch core inflation: if wages and other prices follow, the shock becomes persistent.'],
+        [12, 'Rabi sowing improves.', 'Farm output is expected to recover gradually over the next year.'],
+        [18, 'Harvest back to normal.', 'Food prices are easing. Is your policy still right for where the economy is heading?'],
+        [22, 'Last meeting.', 'Your term ends after this decision.'],
+      ],
+    },
+    oil: {
+      id: 'oil', role: 'RBI Governor', title: 'Oil Shock and the Rupee', months: 24, every: 2, levers: ['repo'],
+      shocks: [shockAt('oil', 2)],
+      blurb: 'Crude prices surge and the rupee weakens. Costs rise for every firm at once.',
+      news: [
+        [0, 'Your first meeting.', 'Inflation is near target. Brent crude is steady at $75 a barrel.'],
+        [2, 'Oil spikes.', 'Brent jumps to $115 after supply cuts. India imports about 85% of its crude, and the rupee slides.'],
+        [4, 'Costs pass through.', 'Diesel, freight and fertiliser cost more. Every firm faces higher costs, not just food.'],
+        [8, 'Second-round effects?', 'Watch wages and expected inflation. If they rise, inflation can outlast the oil shock.'],
+        [12, 'Oil steadies.', 'Crude prices stop rising. Costs will ease over the coming year.'],
+        [22, 'Last meeting.', 'Your term ends after this decision.'],
+      ],
+    },
+    budget: {
+      id: 'budget', role: 'Finance Minister', title: 'The Slowdown Budget', months: 24, every: 3, levers: ['tax', 'spend'],
+      shocks: [shockAt('slowdown', 3)],
+      blurb: 'Exports fall and firms stop investing. Set taxes and spending; the RBI sets rates on its own.',
+      news: [
+        [0, 'Budget day.', 'Growth is steady and the deficit is under control. Set the tax rate and government spending for the next quarter.'],
+        [3, 'Global slowdown.', 'Export orders collapse and business confidence falls. Firms postpone investment and households save more.'],
+        [6, 'Jobs at risk.', 'Unemployment is rising. A fiscal stimulus can help, but it widens the deficit.'],
+        [12, 'Halfway through your term.', 'The world economy is stabilising. Watch the deficit and debt as well as jobs.'],
+        [21, 'Final quarter.', 'Your term ends after this budget.'],
+      ],
+    },
+    sandbox: {
+      id: 'sandbox', role: 'Free play', title: 'Your Own Economy', months: 36, every: 2, levers: ['repo', 'tax', 'spend'],
+      shocks: [], sandbox: true,
+      blurb: 'Every lever, no script. Trigger shocks whenever you like and test any idea.',
+      news: [[0, 'Free play.', 'You control interest rates, taxes and government spending. Use the shock buttons to test how the economy responds.']],
+    },
   };
 
-  // The game keeps two economies with identical households, firms and luck:
-  // one follows the player's repo decisions, the other keeps the repo rate unchanged.
+  // A game runs identical economies with the same households, firms and luck:
+  // "player" follows your decisions, "hold" keeps every lever unchanged,
+  // and "auto" lets the RBI's usual rule set the repo rate (for repo scenarios).
   class Game {
-    constructor(opts) {
-      const o = Object.assign({ shocks: MONSOON.shocks }, opts || {});
-      this.scenario = MONSOON;
-      this.player = new Sim(o);
-      this.hold = new Sim(o);
-      this.player.run(this.player.P.burnIn);
-      this.hold.run(this.hold.P.burnIn);
-      this.startRepo = this.player.repo;
+    constructor(scenarioId, opts) {
+      const sc = this.scenario = SCENARIOS[scenarioId] || SCENARIOS.monsoon;
+      const o = Object.assign({ shocks: sc.shocks }, opts || {});
+      const make = () => { const s = new Sim(o); s.run(s.P.burnIn); return s; };
+      this.player = make();
+      this.hold = make();
+      this.auto = sc.levers.includes('repo') ? make() : null;
+      if (!sc.levers.includes('repo')) { this.player.policyRule = 'auto'; this.hold.policyRule = 'auto'; }
+      if (this.auto) this.auto.policyRule = 'auto';
+      this.start = { repo: this.player.repo, tax: this.player.taxRate, spend: this.player.govShare };
+      this.startRepo = this.start.repo;
+      this.decisions = [];
     }
+    get sims() { return [this.player, this.hold, this.auto].filter(Boolean); }
     get month() { return this.player.t; }
     get done() { return this.player.t >= this.scenario.months; }
-    meeting(repo) {
-      this.player.repo = repo;
-      for (let k = 0; k < this.scenario.meetingEvery && !this.done; k++) { this.player.step(); this.hold.step(); }
+    addShock(key) {
+      if (!SHOCKS[key]) return;
+      for (const s of this.sims) s.shocks.push(shockAt(key, s.t));
     }
-    score() {
-      const h = this.player.hist.filter(r => r.t >= 0);
+    meeting(d) {
+      d = Object.assign({}, d);
+      const lv = this.scenario.levers;
+      if (lv.includes('repo') && d.repo !== undefined) this.player.repo = clamp(d.repo, 0.0, 0.15);
+      if (lv.includes('tax') && d.tax !== undefined) this.player.taxRate = clamp(d.tax, 0, 0.4);
+      if (lv.includes('spend') && d.spend !== undefined) this.player.govShare = clamp(d.spend, 0, 0.3);
+      if (d.shock) this.addShock(d.shock);
+      this.decisions.push({ repo: this.player.repo, tax: this.player.taxRate, spend: this.player.govShare, shock: d.shock || '' });
+      for (let k = 0; k < this.scenario.every && !this.done; k++) for (const s of this.sims) s.step();
+    }
+    lossOf(sim) {
+      const h = sim.hist.filter(r => r.t >= 0);
       if (!h.length) return null;
-      const inflGap = h.reduce((s, r) => s + Math.abs(r.infl - 0.04), 0) / h.length;
-      const uGap = h.reduce((s, r) => s + Math.max(0, r.u - 0.07), 0) / h.length;
-      const inBand = h.filter(r => r.infl >= 0.02 && r.infl <= 0.06).length / h.length;
-      const loss = inflGap * 100 + 0.5 * uGap * 100;
-      const grade = loss < 2.0 ? 'A' : loss < 2.4 ? 'B' : loss < 2.9 ? 'C' : 'D';
-      return { inflGap, uGap, inBand, loss, grade };
+      const n = h.length, avg = f => h.reduce((s, r) => s + f(r), 0) / n;
+      const inflGap = avg(r => Math.abs(r.infl - 0.04));
+      const uGap = avg(r => Math.max(0, r.u - 0.07));
+      const defGap = avg(r => Math.max(0, r.defRatio - 0.045));
+      const fiscal = this.scenario.levers.includes('tax');
+      return {
+        inflGap, uGap, defGap, n,
+        inBand: h.filter(r => r.infl >= 0.02 && r.infl <= 0.06).length,
+        uAvg: avg(r => r.u), defAvg: avg(r => r.defRatio),
+        loss: 100 * (inflGap + (fiscal ? 1 : 0.5) * uGap + (fiscal ? 0.5 : 0) * defGap),
+      };
+    }
+    // graded against the economy where nothing changed
+    score() {
+      const me = this.lossOf(this.player), hold = this.lossOf(this.hold);
+      if (!me) return null;
+      const ratio = me.loss / Math.max(hold.loss, 1e-9);
+      const grade = ratio < 0.85 ? 'A' : ratio < 0.97 ? 'B' : ratio < 1.1 ? 'C' : 'D';
+      return Object.assign({}, me, { ratio, grade, hold, auto: this.auto ? this.lossOf(this.auto) : null });
     }
   }
+  const MONSOON = SCENARIOS.monsoon;
 
-  return { Sim, Game, MONSOON, DEFAULTS, taylorRule, mulberry32 };
+  // ---------- Experiment Lab: one run of a user-defined experiment ----------
+  // cfg = { params: {...model settings}, seed, months, policy: { mode: 'rule'|'fixed', repo, tax, spend },
+  //         shocks: [{ key: 'monsoon'|'oil'|'slowdown', start, depth?, months? }] }
+  const LAB_FIELDS = ['infl', 'foodInfl', 'coreInfl', 'u', 'repo', 'Y', 'realWage', 'defRatio', 'debtRatio', 'gini'];
+  function runLab(cfg) {
+    const shocks = (cfg.shocks || []).map(x => Object.assign({}, SHOCKS[x.key], { key: x.key }, x));
+    const sim = new Sim(Object.assign({}, cfg.params || {}, { seed: cfg.seed, shocks }));
+    sim.run(sim.P.burnIn);
+    const pol = cfg.policy || {};
+    if (pol.mode === 'fixed') { sim.policyRule = null; if (pol.repo != null) sim.repo = pol.repo; }
+    else sim.policyRule = 'auto';
+    if (pol.tax != null) sim.taxRate = pol.tax;
+    if (pol.spend != null) sim.govShare = pol.spend;
+    const base = sim.hist[sim.hist.length - 1].Y;
+    const out = {};
+    for (const k of LAB_FIELDS) out[k] = new Float32Array(cfg.months);
+    let maxRes = 0;
+    for (let i = 0; i < cfg.months; i++) {
+      const r = sim.step();
+      for (const k of LAB_FIELDS) out[k][i] = k === 'Y' ? 100 * r.Y / base : r[k];
+      maxRes = Math.max(maxRes, Math.abs(r.residual) / Math.max(r.money, 1));
+    }
+    out.hash = sim.hash(); out.seed = cfg.seed; out.balanced = maxRes < 1e-9;
+    return out;
+  }
+
+
+  return { Sim, Game, SCENARIOS, SHOCKS, MONSOON, DEFAULTS, taylorRule, mulberry32, gini, runLab, LAB_FIELDS };
 });

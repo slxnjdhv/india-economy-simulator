@@ -4,44 +4,17 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Economy Lab Prototype</title>
+<link rel="stylesheet" href="shared.css">
 <style>
-  /* Layout: controls left, four linked charts centre, households and explanation right */
-  :root {
-    --ink: #14213D; --paper: #F7F5EF; --paper2: #ECE8DD; --card: #FFFDF8;
-    --body: #3D4657; --muted: #7A8294; --line: #D6D0C2;
-    --accent: #C8611A; --accent-light: #F2A65A; --food: #4F8A3C; --good: #2E7D4F; --bad: #B23A3A;
-    --header: #14213D; --header-fg: #F7F5EF; --header-sub: #C9D3E3; --news: #FBF1E7;
-    --primary: #14213D; --primary-fg: #FFFFFF; --primary-hover: #23365F;
-    --hold: #9AA1AE; --grid: #E6E1D5; --zero: #B9B2A2; --band: rgba(20,33,61,0.06); --monsoon: rgba(79,138,60,0.08);
-  }
-  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
-    --ink: #EEF1F6; --paper: #0F141E; --paper2: #1A2130; --card: #151C29;
-    --body: #C3CBD8; --muted: #8D96A8; --line: #2A3344;
-    --accent: #E58440; --accent-light: #F2A65A; --food: #7CBF65; --good: #5CC08A; --bad: #EE7272;
-    --header: #0A0F1A; --header-fg: #F7F5EF; --header-sub: #AEB9CC; --news: #2A1F16;
-    --primary: #E58440; --primary-fg: #10141C; --primary-hover: #F09A5C;
-    --hold: #707A8C; --grid: #232C3C; --zero: #4A5468; --band: rgba(238,241,246,0.06); --monsoon: rgba(124,191,101,0.10);
-    color-scheme: dark; } }
-  :root[data-theme="dark"] {
-    --ink: #EEF1F6; --paper: #0F141E; --paper2: #1A2130; --card: #151C29;
-    --body: #C3CBD8; --muted: #8D96A8; --line: #2A3344;
-    --accent: #E58440; --accent-light: #F2A65A; --food: #7CBF65; --good: #5CC08A; --bad: #EE7272;
-    --header: #0A0F1A; --header-fg: #F7F5EF; --header-sub: #AEB9CC; --news: #2A1F16;
-    --primary: #E58440; --primary-fg: #10141C; --primary-hover: #F09A5C;
-    --hold: #707A8C; --grid: #232C3C; --zero: #4A5468; --band: rgba(238,241,246,0.06); --monsoon: rgba(124,191,101,0.10);
-    color-scheme: dark; }
-  * { box-sizing: border-box; }
-  body { margin: 0; background: var(--paper); color: var(--body); font: 15px/1.45 "IBM Plex Sans", -apple-system, "Segoe UI", Roboto, Arial, sans-serif; }
-  header { background: var(--header); color: var(--header-fg); padding: 14px max(16px, env(safe-area-inset-right, 0px)) 14px max(16px, env(safe-area-inset-left, 0px)); display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; }
-  header h1 { margin: 0; font: 600 22px/1.2 "Source Serif 4", Georgia, serif; }
-  header .sub { color: var(--header-sub); font-size: 14px; }
-  header .tag { margin-left: auto; font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--accent-light); }
-  main { display: grid; grid-template-columns: 320px minmax(0, 1fr) 300px; gap: 16px; padding-block: 16px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); max-width: 1600px; margin: 0 auto; }
-  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
-  .col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
-  h2 { margin: 0 0 8px; font: 600 17px/1.25 "Source Serif 4", Georgia, serif; color: var(--ink); }
-  h3 { margin: 0 0 6px; font-size: 13px; font-weight: 600; letter-spacing: .5px; text-transform: uppercase; color: var(--muted); }
-  .month { font-size: 13px; color: var(--muted); }
+  /* Layout: scenario and decisions left, six linked charts centre, households and explanation right */
+  main.wrap { display: grid; grid-template-columns: 320px minmax(0, 1fr) 300px; gap: 16px; align-items: start; }
+  .scen { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .scen button { text-align: left; padding: 8px 10px; background: var(--chip); border-color: transparent; display: flex; flex-direction: column; gap: 2px; }
+  .scen button[aria-pressed="true"] { background: var(--card); border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+  .scen .role { font-size: 11px; letter-spacing: .5px; text-transform: uppercase; color: var(--accent); font-weight: 600; }
+  .scen .name { font-weight: 600; font-size: 13.5px; color: var(--ink); line-height: 1.25; }
+  .blurb { font-size: 13px; color: var(--muted); margin-top: 8px; }
+  .month { font-size: 13px; color: var(--muted); white-space: nowrap; }
   .progress { height: 6px; background: var(--paper2); border-radius: 3px; overflow: hidden; margin: 6px 0 2px; }
   .progress > div { height: 100%; background: var(--accent); width: 0; transition: width .3s; }
   .news { font-size: 14px; border-left: 3px solid var(--accent); padding: 6px 10px; background: var(--news); border-radius: 0 8px 8px 0; margin-top: 8px; }
@@ -49,48 +22,55 @@
   .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .tile { background: var(--paper); border-radius: 8px; padding: 8px 10px; }
   .tile .k { font-size: 12px; color: var(--muted); }
-  .tile .v { font: 600 22px/1.1 "Source Serif 4", Georgia, serif; color: var(--ink); }
-  .tile .d { font-size: 12px; }
+  .tile .v { font: 600 21px/1.15 var(--serif); color: var(--ink); font-variant-numeric: tabular-nums; }
+  .tile .d { font-size: 12px; font-variant-numeric: tabular-nums; }
   .up { color: var(--bad); } .down { color: var(--good); } .flat { color: var(--muted); }
-  .repo { display: flex; align-items: center; gap: 10px; margin: 6px 0 10px; }
-  .repo .val { font: 600 34px/1 "Source Serif 4", Georgia, serif; color: var(--ink); min-width: 110px; text-align: center; }
-  button { font: inherit; cursor: pointer; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--ink); padding: 8px 12px; }
-  button:hover:not(:disabled) { border-color: var(--ink); }
-  button:disabled { opacity: .45; cursor: default; }
-  button.step { width: 44px; height: 44px; font-size: 20px; padding: 0; }
-  button.primary { background: var(--primary); color: var(--primary-fg); border-color: var(--primary); width: 100%; padding: 12px; font-weight: 600; }
-  button.primary:hover:not(:disabled) { background: var(--primary-hover); }
-  button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-  input[type=range] { width: 100%; accent-color: var(--accent); }
-  .row { display: flex; gap: 8px; align-items: center; }
-  .small { font-size: 13px; color: var(--muted); }
+  .lever { display: flex; flex-direction: column; gap: 4px; padding: 8px 0; border-top: 1px solid var(--line); }
+  .lever:first-child { border-top: 0; padding-top: 0; }
+  .lever .top { display: flex; align-items: center; gap: 8px; }
+  .lever .lab { flex: 1; font-size: 13px; color: var(--muted); }
+  .lever .val { font: 600 24px/1 var(--serif); color: var(--ink); min-width: 92px; text-align: center; font-variant-numeric: tabular-nums; }
+  .lever button.step { width: 36px; height: 36px; padding: 0; font-size: 18px; }
+  .lever .note { font-size: 12px; color: var(--muted); min-height: 16px; }
+  .shocks { display: flex; gap: 6px; flex-wrap: wrap; margin: 4px 0 10px; }
+  .shocks button { font-size: 13px; padding: 6px 10px; }
+  .shocks button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+  .compare { display: flex; gap: 6px 12px; flex-wrap: wrap; font-size: 13px; color: var(--muted); margin: 10px 0 0; }
   .charts { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-  .chart canvas { width: 100%; height: 230px; display: block; }
-  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--muted); margin-top: 4px; }
-  .legend i { display: inline-block; width: 18px; height: 0; border-top: 2.5px solid; vertical-align: middle; margin-right: 5px; }
-  .legend i.dash { border-top-style: dashed; }
-  #dots { width: 100%; aspect-ratio: 40 / 25; display: block; }
+  .chart .sub { font-size: 12px; color: var(--muted); margin: -4px 0 4px; }
+  #dots { width: 100%; aspect-ratio: 40 / 25; max-width: 100%; display: block; }
   .explain ol { margin: 0; padding-left: 20px; }
   .explain li { margin-bottom: 6px; }
-  .check { font-size: 13px; color: var(--good); }
+  .check { font-size: 13px; color: var(--good); margin-top: 6px; }
   .score { text-align: center; }
-  .score .grade { font: 600 64px/1 "Source Serif 4", Georgia, serif; color: var(--accent); }
-  .disclaimer { font-size: 12px; color: var(--muted); text-align: center; margin: 0; padding: 0 max(16px, env(safe-area-inset-right, 0px)) 20px max(16px, env(safe-area-inset-left, 0px)); }
-  @media (max-width: 1200px) { main { grid-template-columns: 300px minmax(0, 1fr); } .right { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); } }
-  @media (max-width: 760px) { main { grid-template-columns: 1fr; } .charts { grid-template-columns: 1fr; } header .tag { margin-left: 0; } }
+  .score .grade { font: 600 64px/1 var(--serif); color: var(--accent); }
+  .score .tbl { overflow-x: auto; }
+  .score table { width: 100%; font-size: 12.5px; border-collapse: collapse; margin: 8px 0; font-variant-numeric: tabular-nums; }
+  .score td, .score th { padding: 4px; text-align: right; border-bottom: 1px solid var(--line); }
+  .score td:first-child, .score th:first-child { text-align: left; }
+  .score th { font-weight: 600; color: var(--muted); }
+  .tools { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+  .labcard a { color: var(--accent); font-weight: 600; }
+  @media (max-width: 1250px) { main.wrap { grid-template-columns: 300px minmax(0, 1fr); } .right { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); } }
+  @media (max-width: 760px) { main.wrap { grid-template-columns: 1fr; } .charts { grid-template-columns: 1fr; } header.top .tag { margin-left: 0; } }
 </style>
 </head>
 <body>
-<header>
+<header class="top">
   <h1>Economy Lab</h1>
-  <span class="sub">You are the RBI Governor: The Failed Monsoon</span>
+  <nav aria-label="Pages"><a href="index.html" aria-current="page">Play a scenario</a><a href="lab.html">Experiment Lab</a></nav>
   <span class="tag">Working prototype</span>
 </header>
 
-<main>
+<main class="wrap">
   <section class="col">
     <div class="card">
-      <div class="row" style="justify-content:space-between"><h2 id="phase">Monetary Policy Committee</h2><span class="month" id="month"></span></div>
+      <h3>Scenario</h3>
+      <div class="scen" id="scen"></div>
+      <p class="blurb" id="blurb"></p>
+    </div>
+    <div class="card">
+      <div class="row" style="justify-content:space-between; flex-wrap:nowrap"><h2 id="phase"></h2><span class="month" id="month"></span></div>
       <div class="progress"><div id="bar"></div></div>
       <div class="news" id="news"></div>
     </div>
@@ -101,22 +81,28 @@
         <div class="tile"><div class="k">Unemployment</div><div class="v" id="t-u"></div><div class="d" id="d-u"></div></div>
         <div class="tile"><div class="k">Food inflation</div><div class="v" id="t-food"></div><div class="d" id="d-food"></div></div>
         <div class="tile"><div class="k">Core inflation</div><div class="v" id="t-core"></div><div class="d" id="d-core"></div></div>
+        <div class="tile"><div class="k">Real wages</div><div class="v" id="t-rw"></div><div class="d" id="d-rw"></div></div>
+        <div class="tile"><div class="k">Wealth inequality</div><div class="v" id="t-gini"></div><div class="d" id="d-gini"></div></div>
       </div>
-      <p class="small" style="margin:8px 0 0">Target: 4% CPI inflation, within a 2–6% band. Changes shown are against two months ago.</p>
+      <p class="small" style="margin-top:8px">Target: 4% CPI inflation within a 2–6% band. Real wages: index, 100 = start of warm-up. Inequality: Gini, 0 = equal. Arrows compare with the last decision.</p>
     </div>
     <div class="card">
-      <h3>Your decision: repo rate</h3>
-      <div class="repo">
-        <button class="step" id="minus" aria-label="Cut by 0.25">−</button>
-        <div class="val" id="repo"></div>
-        <button class="step" id="plus" aria-label="Raise by 0.25">+</button>
+      <h3 id="decide-title">Your decision</h3>
+      <div id="levers"></div>
+      <div id="shockbox" hidden>
+        <p class="small">Trigger a shock with your next decision:</p>
+        <div class="shocks" id="shocks"></div>
       </div>
-      <input type="range" id="slider" min="3" max="10" step="0.25" aria-label="Repo rate">
-      <p class="small" id="change" style="margin:6px 0 10px"></p>
-      <button class="primary" id="go">Announce decision · next 2 months</button>
-      <div class="row" style="margin-top:10px; justify-content:space-between">
+      <button class="primary" id="go" style="width:100%"></button>
+      <div class="compare">
+        <label><input type="checkbox" id="show-hold" checked> Show “nothing changed”</label>
+        <label id="auto-wrap"><input type="checkbox" id="show-auto" checked> Show RBI’s usual rule</label>
+      </div>
+      <div class="tools">
         <button id="restart">Restart</button>
-        <span class="small">Economy no. <input id="seed" type="number" value="28" style="width:70px; font:inherit; padding:4px 6px; border:1px solid var(--line); border-radius:6px; background:var(--card); color:var(--ink)"></span>
+        <label class="small row" style="justify-content:flex-end">Economy no. <input id="seed" type="number" min="1" value="28" style="width:72px"></label>
+        <button id="share">Copy replay link</button>
+        <button id="csv">Download data (CSV)</button>
       </div>
     </div>
   </section>
@@ -124,13 +110,17 @@
   <section class="col">
     <div class="charts">
       <div class="card chart"><h3>CPI inflation, % year on year</h3><canvas id="c-infl"></canvas>
-        <div class="legend"><span><i style="border-color:var(--ink)"></i>Headline</span><span><i style="border-color:var(--food)"></i>Food</span><span><i style="border-color:var(--accent-light)"></i>Core</span><span><i class="dash" style="border-color:var(--hold)"></i>If repo unchanged</span></div></div>
+        <div class="legend"><span><i style="border-color:var(--ink)"></i>Headline</span><span><i style="border-color:var(--food)"></i>Food</span><span><i style="border-color:var(--accent-light)"></i>Core</span><span class="lg-hold"><i class="dash" style="border-color:var(--hold)"></i>Nothing changed</span><span class="lg-auto"><i class="dot" style="border-color:var(--auto)"></i>RBI rule</span></div></div>
       <div class="card chart"><h3>Unemployment, %</h3><canvas id="c-u"></canvas>
-        <div class="legend"><span><i style="border-color:var(--accent)"></i>Your economy</span><span><i class="dash" style="border-color:var(--hold)"></i>If repo unchanged</span></div></div>
-      <div class="card chart"><h3>Repo rate, %</h3><canvas id="c-repo"></canvas>
-        <div class="legend"><span><i style="border-color:var(--ink)"></i>Your decisions</span><span><i class="dash" style="border-color:var(--hold)"></i>Unchanged</span></div></div>
-      <div class="card chart"><h3>Real output, index (month 0 = 100)</h3><canvas id="c-y"></canvas>
-        <div class="legend"><span><i style="border-color:var(--ink)"></i>Your economy</span><span><i class="dash" style="border-color:var(--hold)"></i>If repo unchanged</span></div></div>
+        <div class="legend"><span><i style="border-color:var(--accent)"></i>Your economy</span><span class="lg-hold"><i class="dash" style="border-color:var(--hold)"></i>Nothing changed</span><span class="lg-auto"><i class="dot" style="border-color:var(--auto)"></i>RBI rule</span></div></div>
+      <div class="card chart"><h3>Policy settings, %</h3><canvas id="c-pol"></canvas>
+        <div class="legend"><span><i style="border-color:var(--ink)"></i>Repo rate</span><span><i style="border-color:var(--accent)"></i>Tax rate on wages</span><span><i style="border-color:var(--food)"></i>Govt spending, % of output</span><span class="lg-auto"><i class="dot" style="border-color:var(--auto)"></i>RBI rule repo</span></div></div>
+      <div class="card chart"><h3>Real output, index (start = 100)</h3><canvas id="c-y"></canvas>
+        <div class="legend"><span><i style="border-color:var(--ink)"></i>Your economy</span><span class="lg-hold"><i class="dash" style="border-color:var(--hold)"></i>Nothing changed</span><span class="lg-auto"><i class="dot" style="border-color:var(--auto)"></i>RBI rule</span></div></div>
+      <div class="card chart"><h3>Textbook check: the Phillips curve</h3><p class="sub">Each dot is one month of your economy. Dashed line: the textbook short-run curve.</p><canvas id="c-ph"></canvas>
+        <div class="legend"><span><i style="border-color:var(--accent)"></i>Your economy (latest = largest)</span><span><i class="dash" style="border-color:var(--hold)"></i>π = πᵉ − 0.6 × (u − 7%)</span></div></div>
+      <div class="card chart"><h3>Government deficit, % of GDP</h3><p class="sub" id="debt-note"></p><canvas id="c-def"></canvas>
+        <div class="legend"><span><i style="border-color:var(--accent)"></i>Your economy</span><span class="lg-hold"><i class="dash" style="border-color:var(--hold)"></i>Nothing changed</span></div></div>
     </div>
   </section>
 
@@ -140,143 +130,159 @@
       <canvas id="dots"></canvas>
       <div class="legend"><span><i style="border-color:var(--food)"></i>Work in food</span><span><i style="border-color:var(--ink)"></i>Work elsewhere</span><span><i style="border-color:var(--accent)"></i>Unemployed</span></div>
     </div>
-    <div class="card explain">
-      <h3>Explain why</h3>
-      <div id="explain"></div>
-    </div>
+    <div class="card explain"><h3>Explain why</h3><div id="explain"></div></div>
     <div class="card score" id="scorecard" hidden></div>
+    <div class="card labcard">
+      <h3>Run your own experiments</h3>
+      <p class="small">Set every parameter yourself, run hundreds of economies at once, and compare policies with averages and ranges. <a href="lab.html">Open the Experiment Lab →</a></p>
+    </div>
     <div class="card">
       <h3>Under the hood</h3>
-      <p class="small" style="margin:0" id="hood"></p>
-      <p class="check" id="check" style="margin:6px 0 0"></p>
+      <p class="small" id="hood"></p>
+      <p class="check" id="check"></p>
     </div>
   </section>
 </main>
 <p class="disclaimer">A simplified economy of 1,000 households and 100 firms, for teaching. Its numbers are illustrative and are not a forecast of the Indian economy.</p>
 
 <script src="engine.js"></script>
+<script src="charts.js"></script>
 <script>
 (function () {
-  const E = window.EconEngine;
+  const E = window.EconEngine, Ch = window.EconCharts, tok = Ch.tok;
   const $ = id => document.getElementById(id);
-  const tok = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
   const pct = (x, d = 1) => (100 * x).toFixed(d) + '%';
-  let game, repo, lastRec;
+  const LEVERS = {
+    repo: { label: 'Repo rate', min: 0.03, max: 0.10, step: 0.0025, dec: 2 },
+    tax: { label: 'Tax rate on wages', min: 0.05, max: 0.20, step: 0.005, dec: 1 },
+    spend: { label: 'Government spending, % of output', min: 0.03, max: 0.12, step: 0.005, dec: 1 },
+  };
+  const SHOCK_KEYS = { monsoon: 'm', oil: 'o', slowdown: 's' };
+  let game, scenarioId = 'monsoon', pending = {}, pendingShock = '';
 
-  const NEWS = [
-    { at: 0, html: '<b>Your first meeting.</b> Inflation is close to the 4% target. The IMD forecasts a normal monsoon. Set the repo rate for the next two months.' },
-    { at: 2, html: '<b>Weather alert.</b> Monsoon rains are running well below normal in July. Farmers are worried about the kharif crop.' },
-    { at: 4, html: '<b>Monsoon fails.</b> Rainfall ends 18% below normal. Kharif output falls and vegetable and pulse prices are rising. Food is 46% of the CPI basket.' },
-    { at: 8, html: '<b>Prices spreading?</b> Food inflation is high. Watch core inflation: if wages and other prices follow, the shock becomes persistent.' },
-    { at: 12, html: '<b>Rabi sowing improves.</b> Farm output is expected to recover gradually over the next year.' },
-    { at: 18, html: '<b>Harvest back to normal.</b> Food prices are easing. Is your policy still right for where the economy is heading?' },
-    { at: 22, html: '<b>Last meeting.</b> Your term ends after this decision.' },
-  ];
+  function buildPicker() {
+    $('scen').innerHTML = Object.values(E.SCENARIOS).map(s =>
+      `<button type="button" data-id="${s.id}" aria-pressed="${s.id === scenarioId}"><span class="role">${s.role}</span><span class="name">${s.title}</span></button>`).join('');
+    $('scen').querySelectorAll('button').forEach(b => b.onclick = () => { scenarioId = b.dataset.id; start(); });
+  }
 
-  function start() {
+  function start(decisions) {
     const seed = Math.max(1, Math.floor(Number($('seed').value) || 28));
-    game = new E.Game({ seed });
-    repo = game.startRepo;
-    render();
+    game = new E.Game(scenarioId, { seed });
+    for (const d of decisions || []) game.meeting(d);
+    pending = { repo: game.player.repo, tax: game.player.taxRate, spend: game.player.govShare };
+    pendingShock = '';
+    buildPicker(); buildLevers(); render();
   }
 
-  function setRepo(x) { repo = Math.round(Math.min(0.10, Math.max(0.03, x)) * 400) / 400; renderControls(); }
-
-  function gameHist(sim) { return sim.hist.filter(r => r.t >= -12); }
-
-  function render() {
-    const p = game.player, h = p.hist[p.hist.length - 1], prev = p.hist[p.hist.length - 3];
-    lastRec = h;
-    const m = game.month, total = game.scenario.months;
-    $('month').textContent = game.done ? 'Term complete' : `Month ${m} of ${total}`;
-    $('bar').style.width = (100 * m / total) + '%';
-    const news = NEWS.filter(n => n.at <= m).pop();
-    $('news').innerHTML = game.done ? '<b>Your term is over.</b> See your scorecard on the right, then try a different strategy.' : news.html;
-    tile('infl', h.infl, prev.infl); tile('u', h.u, prev.u); tile('food', h.foodInfl, prev.foodInfl); tile('core', h.coreInfl, prev.coreInfl);
-    $('slider').disabled = $('plus').disabled = $('minus').disabled = $('go').disabled = game.done;
+  function buildLevers() {
+    const sc = game.scenario;
+    $('decide-title').textContent = sc.levers.length > 1 ? 'Your decisions' : 'Your decision: ' + LEVERS[sc.levers[0]].label.toLowerCase();
+    $('levers').innerHTML = sc.levers.map(k => {
+      const L = LEVERS[k];
+      return `<div class="lever"><div class="top"><span class="lab">${L.label}</span>
+        <button class="step" data-k="${k}" data-d="-1" aria-label="Lower ${L.label}">−</button>
+        <span class="val" id="v-${k}"></span>
+        <button class="step" data-k="${k}" data-d="1" aria-label="Raise ${L.label}">+</button></div>
+        <input type="range" id="r-${k}" min="${100 * L.min}" max="${100 * L.max}" step="${100 * L.step}" aria-label="${L.label}">
+        <div class="note" id="n-${k}"></div></div>`;
+    }).join('');
+    $('levers').querySelectorAll('button.step').forEach(b => b.onclick = () => setLever(b.dataset.k, pending[b.dataset.k] + Number(b.dataset.d) * LEVERS[b.dataset.k].step));
+    sc.levers.forEach(k => $('r-' + k).oninput = e => setLever(k, Number(e.target.value) / 100));
+    $('shockbox').hidden = !sc.sandbox;
+    $('shocks').innerHTML = Object.entries(E.SHOCKS).map(([k, s]) => `<button type="button" data-k="${k}" aria-pressed="false">${s.label}</button>`).join('');
+    $('shocks').querySelectorAll('button').forEach(b => b.onclick = () => { pendingShock = pendingShock === b.dataset.k ? '' : b.dataset.k; renderControls(); });
+    $('auto-wrap').hidden = !game.auto;
+  }
+  function setLever(k, x) {
+    const L = LEVERS[k];
+    pending[k] = Math.round(Math.min(L.max, Math.max(L.min, x)) / L.step) * L.step;
     renderControls();
-    drawCharts();
-    drawDots();
-    explain();
-    score();
-    $('hood').textContent = `Every month: firms set wages and prices, hire and fire; households look for work, spend and save; banks lend; the RBI sets the repo rate. Loan rate now ${pct(p.rates().loan, 2)}. Expected inflation ${pct(h.piE)}.`;
-    $('check').textContent = `✓ Accounts balance: every rupee lent is a rupee deposited (gap ₹${Math.abs(h.residual).toExponential(1)}). Run fingerprint ${p.hash()}.`;
   }
-
-  function tile(k, v, before) {
-    $('t-' + k).textContent = pct(v);
-    const d = v - before, el = $('d-' + k);
-    el.className = 'd ' + (Math.abs(d) < 0.0005 ? 'flat' : d > 0 ? 'up' : 'down');
-    el.textContent = (Math.abs(d) < 0.0005 ? '→ ' : d > 0 ? '▲ ' : '▼ ') + (d >= 0 ? '+' : '') + (100 * d).toFixed(1) + ' pts';
-  }
+  const current = () => ({ repo: game.player.repo, tax: game.player.taxRate, spend: game.player.govShare });
 
   function renderControls() {
-    $('repo').textContent = (100 * repo).toFixed(2) + '%';
-    $('slider').value = (100 * repo).toFixed(2);
-    const cur = game.player.repo, d = Math.round((repo - cur) * 10000);
-    $('change').textContent = game.done ? '' : d === 0 ? `Hold at ${(100 * cur).toFixed(2)}%.` : `${d > 0 ? 'Raise' : 'Cut'} by ${Math.abs(d)} basis points from ${(100 * cur).toFixed(2)}%.`;
+    const sc = game.scenario, cur = current();
+    for (const k of sc.levers) {
+      const L = LEVERS[k];
+      $('v-' + k).textContent = (100 * pending[k]).toFixed(L.dec) + '%';
+      $('r-' + k).value = (100 * pending[k]).toFixed(2);
+      const d = pending[k] - cur[k];
+      $('n-' + k).textContent = game.done ? '' : Math.abs(d) < 1e-9 ? `Unchanged at ${(100 * cur[k]).toFixed(L.dec)}%` :
+        k === 'repo' ? `${d > 0 ? 'Raise' : 'Cut'} by ${Math.round(Math.abs(d) * 10000)} basis points` : `${d > 0 ? 'Up' : 'Down'} ${(100 * Math.abs(d)).toFixed(1)} points`;
+      $('r-' + k).disabled = game.done;
+    }
+    $('levers').querySelectorAll('button').forEach(b => b.disabled = game.done);
+    $('shocks').querySelectorAll('button').forEach(b => { b.setAttribute('aria-pressed', String(b.dataset.k === pendingShock)); b.disabled = game.done; });
+    const unit = sc.every === 3 ? 'next quarter' : `next ${sc.every} months`;
+    $('go').textContent = game.done ? 'Term complete' : (sc.role === 'Finance Minister' ? `Present budget · ${unit}` : sc.sandbox ? `Run · ${unit}` : `Announce decision · ${unit}`);
+    $('go').disabled = game.done;
   }
 
-  // ---------- charts ----------
-  function drawChart(id, opt) {
-    const c = $(id), dpr = window.devicePixelRatio || 1, W = c.clientWidth, H = c.clientHeight;
-    c.width = W * dpr; c.height = H * dpr;
-    const g = c.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
-    const L = 40, R = 10, T = 8, B = 24, xMin = -12, xMax = game.scenario.months;
-    let lo = Infinity, hi = -Infinity;
-    for (const s of opt.series) for (const r of s.data) { lo = Math.min(lo, r.y); hi = Math.max(hi, r.y); }
-    if (opt.band) { lo = Math.min(lo, opt.band[0]); hi = Math.max(hi, opt.band[1]); }
-    if (opt.floor !== undefined) lo = Math.min(lo, opt.floor);
-    const pad = Math.max((hi - lo) * 0.12, opt.minSpan || 0.5); lo -= pad; hi += pad;
-    const X = t => L + (W - L - R) * (t - xMin) / (xMax - xMin), Y = v => T + (H - T - B) * (1 - (v - lo) / (hi - lo));
-    // monsoon months
-    g.fillStyle = tok('--monsoon'); g.fillRect(X(3), T, X(12) - X(3), H - T - B);
-    g.fillStyle = tok('--food'); g.font = '11px sans-serif'; g.fillText('monsoon fails', X(3) + 4, T + 12);
-    if (opt.band) { g.fillStyle = tok('--band'); g.fillRect(L, Y(opt.band[1]), W - L - R, Y(opt.band[0]) - Y(opt.band[1])); }
-    // grid
-    const step = niceStep((hi - lo) / 4);
-    g.strokeStyle = tok('--grid'); g.fillStyle = tok('--muted'); g.lineWidth = 1; g.font = '11px sans-serif'; g.textAlign = 'right';
-    for (let v = Math.ceil(lo / step) * step; v <= hi; v += step) {
-      g.beginPath(); g.moveTo(L, Y(v)); g.lineTo(W - R, Y(v)); g.stroke();
-      g.fillText(v.toFixed(step < 1 ? 1 : 0), L - 6, Y(v) + 4);
-    }
-    g.textAlign = 'center';
-    for (let t = -12; t <= xMax; t += 6) g.fillText(t === 0 ? 'start' : (t > 0 ? 'm' + t : t), X(t), H - 6);
-    g.strokeStyle = tok('--zero'); g.setLineDash([2, 3]); g.beginPath(); g.moveTo(X(0), T); g.lineTo(X(0), H - B); g.stroke(); g.setLineDash([]);
-    for (const s of opt.series) {
-      if (!s.data.length) continue;
-      g.strokeStyle = s.color; g.lineWidth = s.width || 2.2; g.setLineDash(s.dash ? [6, 4] : []);
-      g.beginPath();
-      s.data.forEach((r, i) => {
-        const x = X(r.x), y = Y(r.y);
-        if (i === 0) g.moveTo(x, y);
-        else if (s.stepped) { g.lineTo(x, Y(s.data[i - 1].y)); g.lineTo(x, y); }
-        else g.lineTo(x, y);
-      });
-      g.stroke();
-    }
-    g.setLineDash([]);
+  function render() {
+    const sc = game.scenario, p = game.player, h = p.hist[p.hist.length - 1];
+    const prev = p.hist[p.hist.length - 1 - sc.every] || h;
+    $('blurb').textContent = sc.blurb;
+    $('phase').textContent = sc.role === 'Finance Minister' ? 'Union Budget' : sc.sandbox ? 'Free play' : 'Monetary Policy Committee';
+    $('month').textContent = game.done ? 'Term complete' : `Month ${game.month} of ${sc.months}`;
+    $('bar').style.width = (100 * game.month / sc.months) + '%';
+    const n = sc.news.filter(x => x[0] <= game.month).pop();
+    $('news').innerHTML = game.done ? '<b>Your term is over.</b> See your scorecard, then try a different strategy or another scenario.' : `<b>${n[1]}</b> ${n[2]}`;
+    tile('infl', h.infl, prev.infl, 'pct', 1); tile('u', h.u, prev.u, 'pct', 1); tile('food', h.foodInfl, prev.foodInfl, 'pct', 1); tile('core', h.coreInfl, prev.coreInfl, 'pct', 1);
+    tile('rw', h.realWage, prev.realWage, 'index', -1);
+    tile('gini', h.gini, prev.gini, 'gini', 1);
+    renderControls(); drawCharts(); drawDots(); explain(); score();
+    $('hood').textContent = `Every month firms set wages and prices and hire or fire; households look for work, spend and save; banks lend; the government taxes and spends; the RBI sets the repo rate. Loan rate now ${pct(p.rates().loan, 2)}. Expected inflation ${pct(h.piE)}.`;
+    $('check').textContent = `✓ Accounts balance every month: every rupee lent is a rupee deposited. Run fingerprint ${p.hash()}.`;
   }
-  function niceStep(x) { const p = Math.pow(10, Math.floor(Math.log10(x))); const f = x / p; return (f < 1.5 ? 1 : f < 3 ? 2 : f < 7 ? 5 : 10) * p; }
 
+  // kind: 'pct' | 'index' | 'gini'; sign +1 = a rise is bad (red), -1 = a rise is good (green)
+  function tile(k, v, before, kind, sign) {
+    const show = x => kind === 'pct' ? pct(x) : kind === 'index' ? (100 * x).toFixed(1) : x.toFixed(3);
+    const showD = x => kind === 'pct' ? (100 * x).toFixed(1) + ' pts' : kind === 'index' ? (100 * x).toFixed(1) : x.toFixed(3);
+    const tiny = kind === 'pct' ? 0.0005 : kind === 'index' ? 0.0005 : 0.0005;
+    $('t-' + k).textContent = show(v);
+    const d = v - before, el = $('d-' + k);
+    el.className = 'd ' + (Math.abs(d) < tiny ? 'flat' : sign * d > 0 ? 'up' : 'down');
+    el.textContent = (Math.abs(d) < tiny ? '→ ' : d > 0 ? '▲ +' : '▼ ') + showD(d);
+  }
+
+  function changed() { return game.decisions.some(d => Math.abs(d.repo - game.start.repo) + Math.abs(d.tax - game.start.tax) + Math.abs(d.spend - game.start.spend) > 1e-9 || d.shock); }
   function drawCharts() {
-    const P = gameHist(game.player), Hd = game.hold.hist.filter(r => r.t >= 0);
+    const sc = game.scenario, T = sc.months;
+    const P = game.player.hist.filter(r => r.t >= -12);
+    const showHold = $('show-hold').checked && game.month > 0 && changed();
+    const showAuto = $('show-auto').checked && !!game.auto && game.month > 0;
+    document.querySelectorAll('.lg-hold').forEach(el => el.hidden = !$('show-hold').checked);
+    document.querySelectorAll('.lg-auto').forEach(el => el.hidden = !(game.auto && $('show-auto').checked));
+    const Hd = showHold ? game.hold.hist.filter(r => r.t >= 0) : [];
+    const Au = showAuto ? game.auto.hist.filter(r => r.t >= 0) : [];
     const pts = (arr, k, s = 100) => arr.map(r => ({ x: r.t + 1, y: r[k] * s }));
-    const holdLine = k => game.month > 0 && Math.abs(game.player.repo - game.startRepo) + P.filter(r => r.t >= 0).reduce((s, r) => s + Math.abs(r.repo - game.startRepo), 0) > 1e-9 ? pts(Hd, k) : [];
-    drawChart('c-infl', { band: [2, 6], series: [
-      { data: holdLine('infl'), color: tok('--hold'), dash: true },
-      { data: pts(P, 'coreInfl'), color: tok('--accent-light'), width: 1.8 },
-      { data: pts(P, 'foodInfl'), color: tok('--food'), width: 1.8 },
-      { data: pts(P, 'infl'), color: tok('--ink'), width: 2.8 }] });
-    drawChart('c-u', { series: [{ data: holdLine('u'), color: tok('--hold'), dash: true }, { data: pts(P, 'u'), color: tok('--accent'), width: 2.6 }] });
-    const repoPts = pts(P, 'repo');
-    if (!game.done) repoPts.push({ x: game.month + 1, y: 100 * repo });
-    drawChart('c-repo', { minSpan: 1, series: [
-      { data: [{ x: 0, y: 100 * game.startRepo }, { x: game.scenario.months, y: 100 * game.startRepo }], color: tok('--hold'), dash: true },
-      { data: repoPts, color: tok('--ink'), width: 2.6, stepped: true }] });
-    const base = game.player.hist.find(r => r.t === -1).Y;
-    const yIdx = arr => arr.map(r => ({ x: r.t + 1, y: 100 * r.Y / base }));
-    drawChart('c-y', { minSpan: 1, series: [{ data: holdLine('Y').length ? yIdx(Hd) : [], color: tok('--hold'), dash: true }, { data: yIdx(P), color: tok('--ink'), width: 2.4 }] });
+    const ticks = []; for (let t = -12; t <= T; t += 6) ticks.push(t);
+    const base = { xMin: -12, xMax: T, xTicks: ticks, xLabel: t => t === 0 ? 'start' : t > 0 ? 'm' + t : String(t), marker: 0, shade: shades() };
+    const ghost = k => [{ data: pts(Hd, k), color: tok('--hold'), dash: 'dash' }, { data: pts(Au, k), color: tok('--auto'), dash: 'dot' }];
+    Ch.line($('c-infl'), Object.assign({}, base, { bandY: [2, 6], series: [...ghost('infl'),
+      { data: pts(P, 'coreInfl'), color: tok('--accent-light'), width: 1.8 }, { data: pts(P, 'foodInfl'), color: tok('--food'), width: 1.8 },
+      { data: pts(P, 'infl'), color: tok('--ink'), width: 2.8, end: true }] }));
+    Ch.line($('c-u'), Object.assign({}, base, { series: [...ghost('u'), { data: pts(P, 'u'), color: tok('--accent'), width: 2.6, end: true }] }));
+    const step = (k, lever) => { const a = pts(P, k); if (!game.done && sc.levers.includes(lever)) a.push({ x: game.month + 1, y: 100 * pending[lever] }); return a; };
+    Ch.line($('c-pol'), Object.assign({}, base, { minSpan: 2, series: [
+      { data: pts(Au, 'repo'), color: tok('--auto'), dash: 'dot', stepped: true },
+      { data: step('govShare', 'spend'), color: tok('--food'), width: 2.2, stepped: true },
+      { data: step('taxRate', 'tax'), color: tok('--accent'), width: 2.2, stepped: true },
+      { data: step('repo', 'repo'), color: tok('--ink'), width: 2.6, stepped: true }] }));
+    const y0 = (game.player.hist.find(r => r.t === -1) || P[0]).Y;
+    const yi = arr => arr.map(r => ({ x: r.t + 1, y: 100 * r.Y / y0 }));
+    Ch.line($('c-y'), Object.assign({}, base, { minSpan: 2, series: [{ data: yi(Hd), color: tok('--hold'), dash: 'dash' }, { data: yi(Au), color: tok('--auto'), dash: 'dot' }, { data: yi(P), color: tok('--ink'), width: 2.4, end: true }] }));
+    const ph = P.map(r => ({ x: 100 * r.u, y: 100 * r.infl }));
+    const piE = 100 * game.player.piE;
+    Ch.scatter($('c-ph'), { points: ph, color: tok('--accent'), xLabel: 'unemployment, %', ref: { x0: 3, y0: piE - 0.6 * (3 - 7), x1: 14, y1: piE - 0.6 * (14 - 7), color: tok('--hold') } });
+    Ch.line($('c-def'), Object.assign({}, base, { minSpan: 2, series: [{ data: pts(Hd, 'defRatio'), color: tok('--hold'), dash: 'dash' }, { data: pts(P, 'defRatio'), color: tok('--accent'), width: 2.4, end: true }] }));
+    const last = game.player.hist[game.player.hist.length - 1];
+    $('debt-note').textContent = `Government debt now ${pct(last.debtRatio, 0)} of a year's GDP.`;
+  }
+  function shades() {
+    return game.player.shocks.map(s => ({ from: s.start, to: s.start + s.months, label: E.SHOCKS[s.key] ? E.SHOCKS[s.key].label.toLowerCase() : 'shock' }));
   }
 
   function drawDots() {
@@ -284,70 +290,96 @@
     c.width = W * dpr; c.height = H * dpr;
     const g = c.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
     const s = game.player, cols = 40, rows = 25, cw = W / cols, ch = H / rows, r = Math.min(cw, ch) * 0.36;
-    // sort so the picture is stable: by employer type, then by household number
+    const cU = tok('--accent'), cF = tok('--food'), cO = tok('--ink');
     for (let i = 0; i < s.H; i++) {
       const f = s.emp[i];
-      g.fillStyle = f < 0 ? tok('--accent') : s.isFood[f] ? tok('--food') : tok('--ink');
-      const x = (i % cols + 0.5) * cw, y = (Math.floor(i / cols) + 0.5) * ch;
-      g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
+      g.fillStyle = f < 0 ? cU : s.isFood[f] ? cF : cO;
+      g.beginPath(); g.arc((i % cols + 0.5) * cw, (Math.floor(i / cols) + 0.5) * ch, r, 0, Math.PI * 2); g.fill();
     }
   }
 
-  // ---------- explain why: compare with the economy where the repo never changed ----------
   function explain() {
-    const p = game.player.hist[game.player.hist.length - 1];
-    const q = game.hold.hist[game.hold.hist.length - 1];
     const el = $('explain');
-    if (game.month === 0) { el.innerHTML = '<p class="small" style="margin:0">After each decision, this panel compares your economy with an identical one where the repo rate never changed, and traces the difference step by step.</p>'; return; }
+    if (game.month === 0) { el.innerHTML = '<p class="small">After each decision, this panel compares your economy with an identical one where nothing changed, and traces the difference step by step.</p>'; return; }
+    if (!changed()) { el.innerHTML = '<p>You have not changed any policy yet, so your economy and the comparison economy are identical.</p>'; return; }
+    const p = game.player.hist[game.player.hist.length - 1], q = game.hold.hist[game.hold.hist.length - 1];
     const pp = x => (x >= 0 ? '+' : '−') + Math.abs(100 * x).toFixed(1) + ' pts';
     const pc = x => (x >= 0 ? '+' : '−') + Math.abs(100 * x).toFixed(1) + '%';
-    const dRepo = p.repo - q.repo;
-    let html = '';
-    if (Math.abs(dRepo) < 1e-9 && game.player.hist.filter(r => r.t >= 0).every(r => Math.abs(r.repo - game.startRepo) < 1e-9)) {
-      html = `<p style="margin:0 0 8px">You have kept the repo at ${pct(p.repo, 2)}, so there is nothing to compare yet.</p>`;
-    } else {
-      const items = [];
-      items.push(`Repo ${pct(p.repo, 2)} vs ${pct(q.repo, 2)} unchanged, so banks lend at ${pct(p.loanRate, 2)} instead of ${pct(q.loanRate, 2)}.`);
-      items.push(`Households save more when rates are higher: they now spend ${(100 * p.aInc).toFixed(1)}% of their income vs ${(100 * q.aInc).toFixed(1)}%.`);
-      items.push(`Firms' investment spending is ${pc(p.I / q.I - 1)}, because borrowing costs ${dRepo >= 0 ? 'more' : 'less'}.`);
-      items.push(`Unemployment is ${pp(p.u - q.u)} (${pct(p.u)} vs ${pct(q.u)}). ${p.u > q.u ? 'Fewer vacancies mean slower wage growth.' : 'A tighter job market pushes wages up faster.'}`);
-      items.push(`Core inflation is ${pp(p.coreInfl - q.coreInfl)} and food inflation ${pp(p.foodInfl - q.foodInfl)}, so headline CPI is ${pp(p.infl - q.infl)} (${pct(p.infl)} vs ${pct(q.infl)}).`);
-      html = '<ol>' + items.map(s => `<li>${s}</li>`).join('') + '</ol>';
+    const items = [];
+    if (Math.abs(p.repo - q.repo) > 1e-9) {
+      items.push(`${game.scenario.levers.includes('repo') ? 'Repo' : 'The RBI reacted to your budget: repo'} ${pct(p.repo, 2)} vs ${pct(q.repo, 2)}, so banks lend at ${pct(p.loanRate, 2)} instead of ${pct(q.loanRate, 2)}.`);
+      items.push(`Households ${p.aInc < q.aInc ? 'save more' : 'save less'}: they spend ${(100 * p.aInc).toFixed(1)}% of income vs ${(100 * q.aInc).toFixed(1)}%. Firms' investment is ${pc(p.I / q.I - 1)}.`);
     }
-    if (game.month >= 4 && game.month <= 16) html += '<p class="small" style="margin:6px 0 0">Food prices are set by the harvest: interest rates move them only slowly. Rates work mainly through spending, jobs and wages.</p>';
+    if (Math.abs(p.taxRate - q.taxRate) > 1e-9) items.push(`Tax on wages ${pct(p.taxRate)} vs ${pct(q.taxRate)}: workers keep ${p.taxRate < q.taxRate ? 'more' : 'less'} of each rupee, so consumer spending is ${pc((p.C / p.cpi) / (q.C / q.cpi) - 1)} in real terms.`);
+    if (Math.abs(p.govShare - q.govShare) > 1e-9) items.push(`The government buys ${pct(p.govShare)} of normal output vs ${pct(q.govShare)}, so firms get ${pc(p.G / q.G - 1)} in government orders.`);
+    if (game.player.shocks.length !== game.hold.shocks.length) items.push('Shocks differ between the two economies.');
+    items.push(`Unemployment is ${pp(p.u - q.u)} (${pct(p.u)} vs ${pct(q.u)}). ${p.u > q.u ? 'Fewer vacancies mean slower wage growth.' : 'A tighter job market pushes wages up faster.'}`);
+    items.push(`Core inflation ${pp(p.coreInfl - q.coreInfl)}, food ${pp(p.foodInfl - q.foodInfl)}, so headline CPI is ${pp(p.infl - q.infl)} (${pct(p.infl)} vs ${pct(q.infl)}).`);
+    if (Math.abs(p.taxRate - q.taxRate) + Math.abs(p.govShare - q.govShare) > 1e-9) items.push(`The deficit is ${pct(p.defRatio)} of GDP vs ${pct(q.defRatio)}.`);
+    let html = '<ol>' + items.map(s => `<li>${s}</li>`).join('') + '</ol>';
+    const live = game.player.shocks.some(s => s.type !== 'confidence' && game.month >= s.start && game.month <= s.start + s.months + 4);
+    if (live) html += '<p class="small" style="margin-top:6px">A supply shock raises costs directly; interest rates cannot reverse it. Rates work mainly through spending, jobs and wages.</p>';
     el.innerHTML = html;
   }
 
-  function lossOf(sim) {
-    const h = sim.hist.filter(r => r.t >= 0);
-    const inflGap = h.reduce((s, r) => s + Math.abs(r.infl - 0.04), 0) / h.length;
-    const uAvg = h.reduce((s, r) => s + r.u, 0) / h.length;
-    const inBand = h.filter(r => r.infl >= 0.02 && r.infl <= 0.06).length;
-    return { inflGap, uAvg, inBand, n: h.length };
-  }
   function score() {
     const card = $('scorecard');
     if (!game.done) { card.hidden = true; return; }
-    const s = game.score(), me = lossOf(game.player), hold = lossOf(game.hold);
+    const s = game.score(), fiscal = game.scenario.levers.includes('tax');
+    const row = (name, x) => `<tr><td>${name}</td><td>${x.inBand}/${x.n}</td><td>${(100 * x.inflGap).toFixed(1)}</td><td>${pct(x.uAvg)}</td>${fiscal ? `<td>${pct(x.defAvg)}</td>` : ''}</tr>`;
     card.hidden = false;
     card.innerHTML = `<h3>Your scorecard</h3><div class="grade">${s.grade}</div>
-      <p class="small" style="margin:6px 0">Inflation was inside the 2–6% band in <b>${me.inBand} of ${me.n}</b> months (unchanged repo: ${hold.inBand}).<br>
-      Average distance from 4%: <b>${(100 * me.inflGap).toFixed(1)} pts</b> (unchanged: ${(100 * hold.inflGap).toFixed(1)}).<br>
-      Average unemployment: <b>${pct(me.uAvg)}</b> (unchanged: ${pct(hold.uAvg)}).</p>
-      <p class="small" style="margin:0">Discussion: should a central bank respond to a supply shock it cannot fix, or look through it?</p>`;
+      <p class="small">Graded against the economy where nothing changed.</p>
+      <div class="tbl"><table><tr><th></th><th>Months in 2–6%</th><th>Avg gap from 4%</th><th>Avg unemp.</th>${fiscal ? '<th>Avg deficit</th>' : ''}</tr>
+      ${row('You', s)}${row('Nothing changed', s.hold)}${s.auto ? row('RBI rule', s.auto) : ''}</table></div>
+      <p class="small">${fiscal ? 'Discussion: how much deficit is worth paying to protect jobs in a slowdown?' : 'Discussion: should a central bank respond to a supply shock it cannot fix, or look through it?'}</p>`;
   }
 
-  $('plus').onclick = () => setRepo(repo + 0.0025);
-  $('minus').onclick = () => setRepo(repo - 0.0025);
-  $('slider').oninput = e => setRepo(Number(e.target.value) / 100);
-  $('go').onclick = () => { game.meeting(repo); render(); };
-  $('restart').onclick = start;
-  $('seed').onchange = start;
-  const redraw = () => { if (game) { drawCharts(); drawDots(); } };
-  window.addEventListener('resize', redraw);
-  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', redraw);
-  new MutationObserver(redraw).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
-  start();
+  function encode() {
+    const ds = game.decisions.map(d => `r${Math.round(d.repo * 10000)}t${Math.round(d.tax * 1000)}s${Math.round(d.spend * 1000)}${d.shock ? 'x' + SHOCK_KEYS[d.shock] : ''}`);
+    return ['play', scenarioId, game.player.P.seed].concat(ds).join('-');
+  }
+  function decode(hash) {
+    const parts = hash.replace(/^#/, '').split('-');
+    if (parts[0] !== 'play' || !E.SCENARIOS[parts[1]]) return null;
+    const keyOf = Object.fromEntries(Object.entries(SHOCK_KEYS).map(([k, v]) => [v, k]));
+    const decisions = parts.slice(3).map(t => {
+      const m = /^r(\d+)t(\d+)s(\d+)(?:x([mos]))?$/.exec(t);
+      return m ? { repo: m[1] / 10000, tax: m[2] / 1000, spend: m[3] / 1000, shock: m[4] ? keyOf[m[4]] : '' } : null;
+    }).filter(Boolean);
+    return { scenario: parts[1], seed: Number(parts[2]) || 28, decisions };
+  }
+  $('share').onclick = async () => {
+    const h = encode();
+    try { history.replaceState(null, '', '#' + h); } catch (e) { location.hash = h; }
+    const url = location.href.split('#')[0] + '#' + h;
+    Ch.toast((await Ch.copyText(url)) ? 'Replay link copied. Anyone who opens it sees this exact game.' : 'Copy this link from the address bar: ' + url);
+  };
+  $('csv').onclick = () => {
+    const cols = ['month', 'repo_pct', 'tax_pct', 'spend_pct', 'cpi_inflation_pct', 'food_inflation_pct', 'core_inflation_pct', 'unemployment_pct', 'real_output', 'real_wage_index', 'deficit_pct_gdp', 'debt_pct_gdp', 'wealth_gini', 'nochange_inflation_pct', 'nochange_unemployment_pct', 'rbirule_inflation_pct', 'rbirule_unemployment_pct'];
+    const P = game.player.hist.filter(r => r.t >= 0), Hd = game.hold.hist.filter(r => r.t >= 0), Au = game.auto ? game.auto.hist.filter(r => r.t >= 0) : [];
+    const f = (x, d = 3) => (+x).toFixed(d);
+    const lines = P.map((r, i) => [r.t + 1, f(100 * r.repo, 2), f(100 * r.taxRate, 1), f(100 * r.govShare, 1), f(100 * r.infl), f(100 * r.foodInfl), f(100 * r.coreInfl), f(100 * r.u, 2), f(r.Y, 1), f(100 * r.realWage, 2), f(100 * r.defRatio), f(100 * r.debtRatio, 2), f(r.gini, 4),
+      Hd[i] ? f(100 * Hd[i].infl) : '', Hd[i] ? f(100 * Hd[i].u, 2) : '', Au[i] ? f(100 * Au[i].infl) : '', Au[i] ? f(100 * Au[i].u, 2) : ''].join(','));
+    const ok = Ch.downloadText(`economy-lab-${scenarioId}-${game.player.P.seed}.csv`, [cols.join(',')].concat(lines).join('\n'));
+    Ch.toast(ok ? 'Data downloaded.' : 'This viewer blocks downloads. Open the page from GitHub to download data.');
+  };
+
+  $('go').onclick = () => {
+    const d = Object.assign({}, pending);
+    if (pendingShock) d.shock = pendingShock;
+    game.meeting(d); pendingShock = '';
+    render();
+  };
+  $('restart').onclick = () => start();
+  $('seed').onchange = () => start();
+  $('show-hold').onchange = drawCharts;
+  $('show-auto').onchange = drawCharts;
+  Ch.onThemeChange(() => { if (game) { drawCharts(); drawDots(); } });
+
+  const fromLink = decode(location.hash);
+  if (fromLink) { scenarioId = fromLink.scenario; $('seed').value = fromLink.seed; start(fromLink.decisions); Ch.toast('Replaying a shared game.'); }
+  else start();
 })();
 </script>
 </body>

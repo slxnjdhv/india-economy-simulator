@@ -1,0 +1,461 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Economy Lab Experiments</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+  /* Layout: experiment form on the left, results on the right */
+  main.wrap { display: grid; grid-template-columns: 400px minmax(0, 1fr); gap: 16px; align-items: start; }
+  fieldset { border: 1px solid var(--line); border-radius: 12px; background: var(--card); padding: 12px 16px 14px; margin: 0; min-width: 0; }
+  legend { font: 600 16px/1.2 var(--serif); color: var(--ink); padding: 0 6px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; }
+  .f { display: flex; flex-direction: column; gap: 3px; font-size: 13px; color: var(--muted); min-width: 0; }
+  .f input, .f select { width: 100%; }
+  .f .hint { font-size: 11.5px; }
+  .full { grid-column: 1 / -1; }
+  .presets { display: flex; gap: 6px; flex-wrap: wrap; }
+  .presets button { font-size: 13px; padding: 6px 10px; text-align: left; }
+  details summary { cursor: pointer; font-size: 13px; color: var(--accent); font-weight: 600; margin-top: 8px; }
+  .shock { display: grid; grid-template-columns: auto 1fr 1fr; gap: 6px 10px; align-items: center; font-size: 13px; }
+  .shock input[type=number] { width: 100%; }
+  .run { position: sticky; bottom: 0; display: flex; flex-direction: column; gap: 6px; background: var(--paper); padding: 10px 0 calc(10px + env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--line); z-index: 2; }
+  .run .est { font-size: 12.5px; color: var(--muted); text-align: center; }
+  .progress { height: 8px; background: var(--paper2); border-radius: 4px; overflow: hidden; }
+  .progress > div { height: 100%; background: var(--accent); width: 0; }
+  .status { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; color: var(--muted); margin-top: 6px; flex-wrap: wrap; }
+  .results-empty { color: var(--muted); }
+  .tablewrap { overflow-x: auto; }
+  table.sum { border-collapse: collapse; width: 100%; font-size: 13px; font-variant-numeric: tabular-nums; }
+  table.sum th, table.sum td { padding: 6px 8px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+  table.sum th:first-child, table.sum td:first-child { text-align: left; }
+  table.sum th { color: var(--muted); font-weight: 600; font-size: 12px; }
+  table.sum td .rng { color: var(--muted); font-size: 11.5px; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .chart canvas { height: 260px; }
+  .sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+  textarea { width: 100%; min-height: 90px; font: 12px/1.4 ui-monospace, Menlo, monospace; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); color: var(--ink); padding: 8px; }
+  .intro p { max-width: 70ch; }
+  @media (max-width: 1000px) { main.wrap { grid-template-columns: 1fr; } .two { grid-template-columns: 1fr; } }
+  @media (max-width: 760px) { header.top .tag { margin-left: 0; } }
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>Economy Lab</h1>
+  <nav aria-label="Pages"><a href="index.html">Play a scenario</a><a href="lab.html" aria-current="page">Experiment Lab</a></nav>
+  <span class="tag">Working prototype</span>
+</header>
+
+<main class="wrap">
+  <form class="col" id="form" novalidate>
+    <div class="card intro">
+      <h2>Experiment Lab</h2>
+      <p class="small">Design your own experiment: choose the economy's size, the policy, the shocks and the behaviour of households and firms. Run it across many simulated economies at once, or vary one setting to see how results change. Every run is reproducible from its settings and economy number.</p>
+      <h3 style="margin-top:12px">Start from an example</h3>
+      <div class="presets" id="presets"></div>
+    </div>
+
+    <fieldset>
+      <legend>1. Economy</legend>
+      <div class="grid">
+        <label class="f">Households<input type="number" id="households" min="100" max="20000" step="100"><span class="hint">100 to 20,000</span></label>
+        <label class="f">Firms<input type="number" id="firms" min="10" max="2000" step="10"><span class="hint">30% of them produce food</span></label>
+        <label class="f">Months to simulate<input type="number" id="months" min="6" max="240" step="6"><span class="hint">after a warm-up period</span></label>
+        <label class="f">Warm-up months<input type="number" id="burnIn" min="24" max="240" step="12"><span class="hint">lets the economy settle first</span></label>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>2. Policy</legend>
+      <div class="grid">
+        <label class="f full">Who sets the repo rate?
+          <select id="mode"><option value="rule">The RBI's usual rule (reacts to inflation and jobs)</option><option value="fixed">Held fixed at a chosen rate</option></select></label>
+        <label class="f">Repo rate, % (if fixed)<input type="number" id="repo" min="0" max="15" step="0.25"></label>
+        <label class="f">Inflation target, %<input type="number" id="target" min="0" max="10" step="0.5"></label>
+        <label class="f">Rule's response to inflation<input type="number" id="ruleInfl" min="0" max="4" step="0.1"><span class="hint">Taylor principle: above 1</span></label>
+        <label class="f">Rule's response to unemployment<input type="number" id="ruleU" min="0" max="3" step="0.1"></label>
+        <label class="f">Tax rate on wages, %<input type="number" id="tax" min="0" max="40" step="0.5"></label>
+        <label class="f">Govt spending, % of output<input type="number" id="spend" min="0" max="30" step="0.5"></label>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>3. Shocks</legend>
+      <p class="small" style="margin-bottom:8px">Start month counts from the end of the warm-up. Size is the percentage fall in output per worker (or in spending, for a slowdown).</p>
+      <div class="shock">
+        <span></span><span class="small">Start month</span><span class="small">Size, %</span>
+        <label><input type="checkbox" id="sh-monsoon"> Monsoon failure (food)</label><input type="number" id="sh-monsoon-start" min="0" max="200"><input type="number" id="sh-monsoon-depth" min="0" max="30" step="0.5">
+        <label><input type="checkbox" id="sh-oil"> Oil price spike (all firms)</label><input type="number" id="sh-oil-start" min="0" max="200"><input type="number" id="sh-oil-depth" min="0" max="30" step="0.5">
+        <label><input type="checkbox" id="sh-slowdown"> Global slowdown (demand)</label><input type="number" id="sh-slowdown-start" min="0" max="200"><input type="number" id="sh-slowdown-depth" min="0" max="30" step="0.5">
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>4. Behaviour</legend>
+      <div class="grid">
+        <label class="f">Expectations anchoring (0–1)<input type="number" id="anchor" min="0" max="1" step="0.05"><span class="hint">1 = everyone trusts the target</span></label>
+        <label class="f">Phillips curve slope<input type="number" id="phillips" min="0" max="3" step="0.1"><span class="hint">how much slack slows wages</span></label>
+        <label class="f">Firms repricing each month, %<input type="number" id="calvo" min="5" max="100" step="5"><span class="hint">price stickiness</span></label>
+        <label class="f">Food share of spending, %<input type="number" id="foodWeight" min="10" max="80" step="1"><span class="hint">India's CPI: about 46%</span></label>
+      </div>
+      <details>
+        <summary>More settings for economists</summary>
+        <div class="grid" style="margin-top:10px">
+          <label class="f">Consumption sensitivity to real rates<input type="number" id="cSens" min="0" max="5" step="0.1"></label>
+          <label class="f">Investment sensitivity to real rates<input type="number" id="iSens" min="0" max="20" step="0.5"></label>
+          <label class="f">Share of income consumed<input type="number" id="aInc" min="0.5" max="0.98" step="0.01"></label>
+          <label class="f">Price markup over cost<input type="number" id="markup" min="0" max="1" step="0.05"></label>
+          <label class="f">Natural unemployment, %<input type="number" id="uNatural" min="1" max="20" step="0.5"></label>
+          <label class="f">Monthly quit rate, %<input type="number" id="quitRate" min="0" max="10" step="0.5"></label>
+          <label class="f">Unemployment benefit, % of wage<input type="number" id="transferRatio" min="0" max="100" step="5"></label>
+          <label class="f">Speed expectations adapt (0–1)<input type="number" id="expLearn" min="0" max="1" step="0.02"></label>
+        </div>
+      </details>
+    </fieldset>
+
+    <fieldset>
+      <legend>5. Runs</legend>
+      <div class="grid">
+        <label class="f">Economies per setting<input type="number" id="runs" min="1" max="1000"><span class="hint">different luck, same rules</span></label>
+        <label class="f">First economy number<input type="number" id="seed" min="1"></label>
+        <label class="f full">Vary one setting (optional)
+          <select id="sweep"></select></label>
+        <label class="f">From<input type="number" id="sweepFrom" step="any"></label>
+        <label class="f">To<input type="number" id="sweepTo" step="any"></label>
+        <label class="f">Number of values<input type="number" id="sweepN" min="2" max="12"></label>
+      </div>
+    </fieldset>
+
+    <div class="run">
+      <button class="primary" id="go" type="submit">Run experiment</button>
+      <p class="est" id="est"></p>
+    </div>
+  </form>
+
+  <section class="col" aria-live="polite">
+    <div class="card">
+      <div class="row" style="justify-content:space-between"><h2 id="res-title">Results</h2><button type="button" id="cancel" hidden>Stop</button></div>
+      <div class="progress"><div id="bar"></div></div>
+      <div class="status"><span id="status">Choose an example or set up your own experiment, then press Run.</span><span id="speed"></span></div>
+    </div>
+    <div class="card">
+      <h3>Summary across economies</h3>
+      <p class="small" style="margin-bottom:8px">Each cell: average across economies, with the 10th–90th percentile range underneath. Averages are over the simulated months after warm-up.</p>
+      <div class="tablewrap" id="table"><p class="results-empty">No results yet.</p></div>
+    </div>
+    <div class="two">
+      <div class="card chart">
+        <div class="row" style="justify-content:space-between"><h3 style="margin:0">Over time</h3>
+          <select id="fanVar" aria-label="Variable to chart over time"></select></div>
+        <p class="small" style="margin:4px 0">Line: average. Shaded: 10th–90th percentile across economies.</p>
+        <canvas id="fan"></canvas>
+        <div class="legend" id="fanLegend"></div>
+      </div>
+      <div class="card chart">
+        <div class="row" style="justify-content:space-between"><h3 style="margin:0">Effect of the varied setting</h3>
+          <select id="swVar" aria-label="Outcome to chart against the varied setting"></select></div>
+        <p class="small" style="margin:4px 0">Dot: average. Whiskers: 10th–90th percentile.</p>
+        <canvas id="sw"></canvas>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Save and share</h3>
+      <div class="row" style="margin-bottom:8px">
+        <button type="button" id="dlSum" disabled>Download summary (CSV)</button>
+        <button type="button" id="dlAll" disabled>Download every run (CSV)</button>
+        <button type="button" id="copyCfg">Copy settings</button>
+        <button type="button" id="loadCfg">Load settings from box</button>
+      </div>
+      <label class="f">Experiment settings (JSON). Paste settings here and press “Load settings from box” to repeat someone's experiment exactly.
+        <textarea id="cfg" spellcheck="false"></textarea></label>
+      <p class="small" id="checks" style="margin-top:8px"></p>
+    </div>
+  </section>
+</main>
+<p class="disclaimer">Each economy is a simplified agent-based model for teaching and exploration. Results are illustrative and are not forecasts of the Indian economy.</p>
+
+<script src="engine.js"></script>
+<script src="charts.js"></script>
+<script>
+(function () {
+  const E = window.EconEngine, Ch = window.EconCharts, tok = Ch.tok, D = E.DEFAULTS;
+  const $ = id => document.getElementById(id);
+
+  // ---------- form fields: id, how the form shows it (percent or plain), default ----------
+  const PCT = new Set(['repo', 'target', 'tax', 'spend', 'calvo', 'foodWeight', 'uNatural', 'quitRate', 'transferRatio']);
+  const FIELDS = {
+    households: D.households, firms: D.firms, months: 36, burnIn: D.burnIn,
+    mode: 'rule', repo: 0.0525, target: D.target, ruleInfl: D.ruleInfl, ruleU: D.ruleU, tax: D.taxRate, spend: D.govShare,
+    anchor: D.anchor, phillips: D.phillips, calvo: D.calvo, foodWeight: D.foodWeight,
+    cSens: D.cSens, iSens: D.iSens, aInc: D.aInc, markup: D.markup, uNatural: D.uNatural, quitRate: D.quitRate, transferRatio: D.transferRatio, expLearn: D.expLearn,
+    runs: 40, seed: 1, sweep: '', sweepFrom: 4, sweepTo: 8, sweepN: 5,
+  };
+  const SHOCK_DEF = { monsoon: [false, 3, 6], oil: [false, 3, 3.5], slowdown: [false, 3, 3.5] };
+  const SWEEPS = {
+    '': { label: 'Nothing (one setting)' },
+    repo: { label: 'Repo rate, % (fixed policy)', unit: '%' },
+    ruleInfl: { label: "RBI rule's response to inflation" },
+    anchor: { label: 'Expectations anchoring' },
+    phillips: { label: 'Phillips curve slope' },
+    calvo: { label: 'Firms repricing each month, %', unit: '%' },
+    tax: { label: 'Tax rate on wages, %', unit: '%' },
+    spend: { label: 'Govt spending, % of output', unit: '%' },
+    'sh-monsoon-depth': { label: 'Monsoon shock size, %', unit: '%' },
+    'sh-oil-depth': { label: 'Oil shock size, %', unit: '%' },
+    'sh-slowdown-depth': { label: 'Slowdown size, %', unit: '%' },
+    households: { label: 'Number of households' },
+  };
+  const VARS = {
+    infl: { label: 'CPI inflation, %', s: 100 }, coreInfl: { label: 'Core inflation, %', s: 100 }, foodInfl: { label: 'Food inflation, %', s: 100 },
+    u: { label: 'Unemployment, %', s: 100 }, repo: { label: 'Repo rate, %', s: 100 }, Y: { label: 'Real output (start = 100)', s: 1 },
+    realWage: { label: 'Real wages (index)', s: 100 }, defRatio: { label: 'Deficit, % of GDP', s: 100 }, debtRatio: { label: 'Debt, % of GDP', s: 100 }, gini: { label: 'Wealth inequality (Gini)', s: 1 },
+  };
+  const SUMS = [
+    ['avgInfl', 'Avg inflation, %', r => mean(r.infl) * 100],
+    ['peakInfl', 'Peak inflation, %', r => max(r.infl) * 100],
+    ['avgU', 'Avg unemployment, %', r => mean(r.u) * 100],
+    ['peakU', 'Peak unemployment, %', r => max(r.u) * 100],
+    ['band', 'Months in 2–6% band, %', r => 100 * r.infl.filter(x => x >= 0.02 && x <= 0.06).length / r.infl.length],
+    ['endY', 'Real output at end', r => r.Y[r.Y.length - 1]],
+    ['avgDef', 'Avg deficit, % of GDP', r => mean(r.defRatio) * 100],
+    ['endGini', 'Wealth Gini at end', r => r.gini[r.gini.length - 1]],
+  ];
+  const mean = a => { let s = 0; for (const x of a) s += x; return s / a.length; };
+  const max = a => { let m = -Infinity; for (const x of a) m = Math.max(m, x); return m; };
+  const quant = (sorted, q) => { if (!sorted.length) return NaN; const i = (sorted.length - 1) * q, lo = Math.floor(i), hi = Math.ceil(i); return sorted[lo] + (sorted[hi] - sorted[lo]) * (i - lo); };
+
+  const PRESETS = [
+    { name: 'Should the RBI hike after a failed monsoon?', set: { mode: 'fixed', months: 36, runs: 40, sweep: 'repo', sweepFrom: 0.04, sweepTo: 0.08, sweepN: 5 }, shocks: { monsoon: [true, 3, 6] } },
+    { name: 'Does trust in the 4% target matter?', set: { mode: 'rule', months: 36, runs: 40, sweep: 'anchor', sweepFrom: 0.1, sweepTo: 0.9, sweepN: 5 }, shocks: { oil: [true, 3, 4] } },
+    { name: 'Fiscal stimulus in a global slowdown', set: { mode: 'rule', months: 36, runs: 40, sweep: 'spend', sweepFrom: 0.04, sweepTo: 0.12, sweepN: 5 }, shocks: { slowdown: [true, 3, 4] } },
+    { name: 'Big economy: 10,000 households, 100 runs', set: { households: 10000, firms: 1000, mode: 'rule', months: 48, runs: 100, sweep: '' }, shocks: { monsoon: [true, 6, 6] } },
+  ];
+
+  function fillForm(values, shocks) {
+    for (const [k, v] of Object.entries(values)) {
+      const el = $(k); if (!el) continue;
+      el.value = typeof v === 'number' && PCT.has(k) ? +(100 * v).toFixed(4) : (k === 'sweepFrom' || k === 'sweepTo') && PCT.has(values.sweep || $('sweep').value) && typeof v === 'number' ? +(100 * v).toFixed(4) : v;
+    }
+    for (const [k, [on, st, dp]] of Object.entries(Object.assign({}, SHOCK_DEF, shocks || {}))) {
+      $('sh-' + k).checked = on; $('sh-' + k + '-start').value = st; $('sh-' + k + '-depth').value = dp;
+    }
+    estimate();
+  }
+  function readForm() {
+    const num = id => Number($(id).value);
+    const v = {};
+    for (const k of Object.keys(FIELDS)) {
+      if (k === 'mode' || k === 'sweep') v[k] = $(k).value;
+      else v[k] = PCT.has(k) ? num(k) / 100 : num(k);
+    }
+    const sweepPct = PCT.has(v.sweep);
+    v.sweepFrom = sweepPct ? num('sweepFrom') / 100 : num('sweepFrom');
+    v.sweepTo = sweepPct ? num('sweepTo') / 100 : num('sweepTo');
+    v.shocks = {};
+    for (const k of Object.keys(SHOCK_DEF)) v.shocks[k] = [$('sh-' + k).checked, num('sh-' + k + '-start'), num('sh-' + k + '-depth')];
+    return v;
+  }
+  const clampInt = (x, lo, hi) => Math.max(lo, Math.min(hi, Math.round(x || lo)));
+
+  // Turn the form into a list of runs
+  function buildJobs(v) {
+    const H = clampInt(v.households, 100, 20000), F = clampInt(v.firms, 10, 2000), runs = clampInt(v.runs, 1, 1000);
+    const nVals = clampInt(v.sweepN, 2, 12);
+    const values = v.sweep ? Array.from({ length: nVals }, (_, i) => v.sweepFrom + (v.sweepTo - v.sweepFrom) * i / (nVals - 1)) : [null];
+    const groups = values.map((val, gi) => {
+      const o = JSON.parse(JSON.stringify(v));
+      if (v.sweep.startsWith('sh-')) { const key = v.sweep.split('-')[1]; o.shocks[key][0] = true; o.shocks[key][2] = 100 * val; }
+      else if (v.sweep) o[v.sweep] = val;
+      const h = v.sweep === 'households' ? clampInt(val, 100, 20000) : H, f = v.sweep === 'households' ? clampInt(val / 10, 10, 2000) : F;
+      const cfg = {
+        months: clampInt(v.months, 6, 240),
+        params: {
+          households: h, firms: f, foodFirms: Math.max(1, Math.round(f * 0.3)), burnIn: clampInt(v.burnIn, 24, 240),
+          target: o.target, ruleInfl: o.ruleInfl, ruleU: o.ruleU, anchor: o.anchor, phillips: o.phillips, calvo: o.calvo, foodWeight: o.foodWeight,
+          cSens: o.cSens, iSens: o.iSens, aInc: o.aInc, markup: o.markup, uNatural: o.uNatural, quitRate: o.quitRate, transferRatio: o.transferRatio, expLearn: o.expLearn,
+          neutralRepo: D.neutralRepo + (o.target - D.target),
+        },
+        policy: { mode: o.mode === 'fixed' || v.sweep === 'repo' ? 'fixed' : 'rule', repo: o.repo, tax: o.tax, spend: o.spend },
+        shocks: Object.entries(o.shocks).filter(([, s]) => s[0]).map(([key, s]) => ({ key, start: s[1], depth: s[2] / 100 })),
+      };
+      return { gi, value: val, label: val === null ? 'All economies' : fmtSweep(v.sweep, val), cfg };
+    });
+    const jobs = [];
+    for (const g of groups) for (let k = 0; k < runs; k++) jobs.push({ gi: g.gi, cfg: Object.assign({}, g.cfg, { seed: clampInt(v.seed, 1, 1e9) + k }) });
+    return { groups, jobs, H, months: groups[0].cfg.months, burnIn: groups[0].cfg.params.burnIn };
+  }
+  function fmtSweep(k, x) {
+    if (PCT.has(k)) return (100 * x).toFixed(2).replace(/\.?0+$/, '') + '%';
+    if (k.startsWith('sh-')) return x.toFixed(2).replace(/\.?0+$/, '') + '%';
+    if (k === 'households') return Math.round(x).toLocaleString('en-IN');
+    return x.toFixed(2).replace(/\.?0+$/, '');
+  }
+
+  // ---------- running: a pool of background workers built from the engine's own code ----------
+  const POOL = Math.max(1, Math.min(8, (navigator.hardwareConcurrency || 4) - 1));
+  let workers = [], running = false, plan = null, results = [], t0 = 0;
+  function makeWorker() {
+    const src = `self.EconEngine = (${window.EconEngineFactory.toString()})();
+      onmessage = e => { const r = self.EconEngine.runLab(e.data.cfg); const bufs = self.EconEngine.LAB_FIELDS.map(k => r[k].buffer); postMessage({ id: e.data.id, r }, bufs); };`;
+    return new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
+  }
+  function estimate() {
+    let p; try { p = buildJobs(readForm()); } catch (e) { return; }
+    const perRun = 0.08 * (p.H / 1000) * (p.burnIn + p.months) / 180;
+    const secs = perRun * p.jobs.length / POOL;
+    $('est').textContent = `${p.jobs.length.toLocaleString('en-IN')} economies × ${p.H.toLocaleString('en-IN')} households · about ${secs < 1 ? 'a second' : secs < 90 ? Math.ceil(secs) + ' seconds' : Math.ceil(secs / 60) + ' minutes'} on ${POOL} processor core${POOL > 1 ? 's' : ''}`;
+  }
+
+  function run() {
+    if (running) return;
+    const v = readForm();
+    plan = buildJobs(v); plan.form = v;
+    results = plan.groups.map(() => []);
+    running = true; t0 = performance.now();
+    $('go').disabled = true; $('cancel').hidden = false; $('dlSum').disabled = $('dlAll').disabled = true;
+    $('cfg').value = JSON.stringify(serialise(v), null, 1);
+    let next = 0, done = 0;
+    const total = plan.jobs.length;
+    const finish = () => { running = false; workers.forEach(w => w.terminate()); workers = []; $('go').disabled = false; $('cancel').hidden = true; };
+    const onResult = (job, r) => {
+      results[job.gi].push(r); done++;
+      $('bar').style.width = (100 * done / total) + '%';
+      const el = (performance.now() - t0) / 1000;
+      $('status').textContent = `${done.toLocaleString('en-IN')} of ${total.toLocaleString('en-IN')} economies simulated`;
+      $('speed').textContent = `${el.toFixed(1)} s · ${(done / el).toFixed(1)} economies a second`;
+      if (done % Math.max(1, Math.floor(total / 20)) === 0 || done === total) showResults();
+      if (done === total) { finish(); $('status').textContent = `Done: ${total.toLocaleString('en-IN')} economies in ${el.toFixed(1)} seconds.`; $('dlSum').disabled = $('dlAll').disabled = false; }
+    };
+    try {
+      for (let i = 0; i < Math.min(POOL, total); i++) {
+        const w = makeWorker(); workers.push(w);
+        w.onmessage = e => { onResult(plan.jobs[e.data.id], e.data.r); if (running && next < total) { w.postMessage({ id: next, cfg: plan.jobs[next].cfg }); next++; } };
+        w.onerror = () => { finish(); $('status').textContent = 'A background run failed. Try fewer households or months.'; };
+        w.postMessage({ id: next, cfg: plan.jobs[next].cfg }); next++;
+      }
+    } catch (e) {
+      // no background workers available: run in small batches on the page itself
+      workers = [];
+      const tick = () => {
+        if (!running) return;
+        const until = performance.now() + 40;
+        while (next < total && performance.now() < until) { const j = plan.jobs[next++]; onResult(j, E.runLab(j.cfg)); }
+        if (next < total) setTimeout(tick, 0);
+      };
+      tick();
+    }
+    $('cancel').onclick = () => { finish(); $('status').textContent = `Stopped after ${done} of ${total} economies.`; if (done) { $('dlSum').disabled = $('dlAll').disabled = false; showResults(); } };
+  }
+
+  // ---------- results ----------
+  const COLORS = ['--ink', '--accent', '--food', '--auto', '--accent-light', '--bad', '--good', '--muted'];
+  const colorOf = i => tok(COLORS[i % COLORS.length]);
+  function summarise() {
+    return plan.groups.map((g, gi) => {
+      const rs = results[gi];
+      const cells = {};
+      for (const [k, , f] of SUMS) {
+        const vals = rs.map(f).sort((a, b) => a - b);
+        cells[k] = { mean: mean(vals), lo: quant(vals, 0.1), hi: quant(vals, 0.9) };
+      }
+      return { g, n: rs.length, cells };
+    });
+  }
+  function showResults() {
+    if (!plan) return;
+    const sum = summarise();
+    const sweep = plan.form.sweep;
+    $('res-title').textContent = sweep ? 'Results: ' + SWEEPS[sweep].label.replace(/, %$/, '') : 'Results';
+    const head = `<tr><th>${sweep ? SWEEPS[sweep].label : 'Setting'}</th><th>Economies</th>${SUMS.map(s => `<th>${s[1]}</th>`).join('')}</tr>`;
+    const dec = k => (k === 'endGini' ? 3 : 1);
+    const body = sum.map((s, i) => `<tr><td><span class="sw" style="background:${colorOf(i)}"></span>${s.g.label}</td><td>${s.n}</td>${SUMS.map(([k]) => {
+      const c = s.cells[k]; return s.n ? `<td>${c.mean.toFixed(dec(k))}<br><span class="rng">${c.lo.toFixed(dec(k))} – ${c.hi.toFixed(dec(k))}</span></td>` : '<td>–</td>';
+    }).join('')}</tr>`).join('');
+    $('table').innerHTML = `<table class="sum">${head}${body}</table>`;
+    drawFan(); drawSweep();
+    const all = results.flat();
+    $('checks').textContent = all.length ? (all.every(r => r.balanced) ? `✓ Accounts balanced in all ${all.length.toLocaleString('en-IN')} economies, every month.` : '⚠ Some economies failed the accounting check.') : '';
+  }
+  function drawFan() {
+    if (!plan) return;
+    const key = $('fanVar').value, s = VARS[key].s, months = plan.months;
+    const series = plan.groups.map((g, gi) => {
+      const rs = results[gi]; if (!rs.length) return null;
+      const data = [], band = [];
+      for (let t = 0; t < months; t++) {
+        const col = rs.map(r => r[key][t] * s).sort((a, b) => a - b);
+        data.push({ x: t + 1, y: mean(col) }); band.push({ x: t + 1, lo: quant(col, 0.1), hi: quant(col, 0.9) });
+      }
+      return { data, band, color: colorOf(gi), width: 2.2 };
+    }).filter(Boolean);
+    const ticks = []; const stepT = months > 60 ? 24 : months > 24 ? 12 : 6;
+    for (let t = 0; t <= months; t += stepT) ticks.push(t);
+    const shade = plan.groups[0].cfg.shocks.map(sh => ({ from: sh.start, to: sh.start + (E.SHOCKS[sh.key].months || 0), label: E.SHOCKS[sh.key].label.toLowerCase() }));
+    Ch.line($('fan'), { xMin: 1, xMax: months, xTicks: ticks, xLabel: t => 'm' + t, series, shade, bandY: key === 'infl' ? [2, 6] : null });
+    $('fanLegend').innerHTML = plan.groups.length > 1 ? plan.groups.map((g, i) => `<span><i style="border-color:${colorOf(i)}"></i>${g.label}</span>`).join('') : '';
+  }
+  function drawSweep() {
+    if (!plan) return;
+    const k = $('swVar').value, sum = summarise().filter(s => s.n);
+    if (!plan.form.sweep || sum.length < 2) {
+      const c = $('sw'), g = c.getContext('2d'); c.width = c.clientWidth; c.height = c.clientHeight;
+      g.fillStyle = tok('--muted'); g.font = '13px sans-serif'; g.textAlign = 'center';
+      g.fillText('Choose a setting to vary in step 5 to see its effect here.', c.width / 2, c.height / 2); return;
+    }
+    Ch.whisker($('sw'), { color: tok('--accent'), xLabel: SWEEPS[plan.form.sweep].label, points: sum.map(s => ({ label: s.g.label, y: s.cells[k].mean, lo: s.cells[k].lo, hi: s.cells[k].hi })) });
+  }
+
+  // ---------- save, share, load ----------
+  function serialise(v) { return { version: 1, settings: Object.fromEntries(Object.entries(v).filter(([k]) => k !== 'shocks')), shocks: v.shocks }; }
+  function csvSummary() {
+    const sum = summarise(), cols = ['setting', 'economies'].concat(...SUMS.map(([k]) => [k + '_mean', k + '_p10', k + '_p90']));
+    return [cols.join(',')].concat(sum.map(s => [JSON.stringify(s.g.label), s.n].concat(...SUMS.map(([k]) => [s.cells[k].mean, s.cells[k].lo, s.cells[k].hi].map(x => x.toFixed(4)))).join(','))).join('\n');
+  }
+  function csvAll() {
+    const keys = E.LAB_FIELDS, lines = [['setting', 'economy', 'month'].concat(keys).join(',')];
+    plan.groups.forEach((g, gi) => results[gi].forEach(r => { for (let t = 0; t < plan.months; t++) lines.push([JSON.stringify(g.label), r.seed, t + 1].concat(keys.map(k => (+r[k][t]).toFixed(5))).join(',')); }));
+    return lines.join('\n');
+  }
+  const dl = (name, text) => Ch.toast(Ch.downloadText(name, text) ? 'Downloaded ' + name : 'This viewer blocks downloads. Open the page from GitHub to download data.');
+  $('dlSum').onclick = () => dl('experiment-summary.csv', csvSummary());
+  $('dlAll').onclick = () => dl('experiment-all-runs.csv', csvAll());
+  $('copyCfg').onclick = async () => { $('cfg').value = JSON.stringify(serialise(readForm()), null, 1); Ch.toast((await Ch.copyText($('cfg').value)) ? 'Settings copied.' : 'Select the text in the box to copy it.'); if (!navigator.clipboard) $('cfg').select(); };
+  $('loadCfg').onclick = () => {
+    try { const o = JSON.parse($('cfg').value); $('sweep').value = o.settings.sweep || ''; fillForm(o.settings, o.shocks); Ch.toast('Settings loaded. Press Run experiment.'); }
+    catch (e) { Ch.toast('Those settings could not be read. Paste the full text copied from “Copy settings”.'); }
+  };
+
+  // ---------- set up ----------
+  $('sweep').innerHTML = Object.entries(SWEEPS).map(([k, s]) => `<option value="${k}">${s.label}</option>`).join('');
+  $('fanVar').innerHTML = Object.entries(VARS).map(([k, s]) => `<option value="${k}">${s.label}</option>`).join('');
+  $('swVar').innerHTML = SUMS.map(([k, l]) => `<option value="${k}">${l}</option>`).join('');
+  $('presets').innerHTML = PRESETS.map((p, i) => `<button type="button" data-i="${i}">${p.name}</button>`).join('');
+  $('presets').querySelectorAll('button').forEach(b => b.onclick = () => {
+    const p = PRESETS[+b.dataset.i];
+    const vals = Object.assign({}, FIELDS, p.set);
+    $('sweep').value = vals.sweep;
+    fillForm(vals, p.shocks);
+    Ch.toast('Example loaded. Press Run experiment.');
+  });
+  $('sweep').onchange = () => {
+    const k = $('sweep').value, base = FIELDS[k] !== undefined ? FIELDS[k] : null;
+    if (k && base !== null && k !== 'households') { $('sweepFrom').value = +(base * (PCT.has(k) ? 50 : 0.5)).toFixed(3); $('sweepTo').value = +(base * (PCT.has(k) ? 150 : 1.5)).toFixed(3); }
+    if (k === 'households') { $('sweepFrom').value = 500; $('sweepTo').value = 10000; }
+    if (k.startsWith('sh-')) { $('sweepFrom').value = 0; $('sweepTo').value = 10; }
+    estimate();
+  };
+  $('form').addEventListener('input', estimate);
+  $('form').addEventListener('submit', e => { e.preventDefault(); run(); });
+  $('fanVar').onchange = drawFan; $('swVar').onchange = drawSweep;
+  Ch.onThemeChange(() => { if (plan) { drawFan(); drawSweep(); } });
+
+  const first = Object.assign({}, FIELDS, PRESETS[0].set);
+  $('sweep').value = first.sweep;
+  fillForm(first, PRESETS[0].shocks);
+  $('cfg').value = JSON.stringify(serialise(readForm()), null, 1);
+})();
+</script>
+</body>
+</html>
