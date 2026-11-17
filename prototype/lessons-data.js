@@ -3,7 +3,7 @@
 (function (root) {
   'use strict';
   const E = root.EconEngine;
-  const F = ['infl', 'foodInfl', 'coreInfl', 'u', 'repo', 'loanRate', 'piE', 'I', 'G', 'gdp'];
+  const F = ['infl', 'foodInfl', 'coreInfl', 'u', 'repo', 'loanRate', 'piE', 'I', 'G', 'gdp', 'er', 'tradeBal'];
   const run = (seed, o) => E.runLab(Object.assign({ seed, months: 36, fields: F }, o));
   const mean = (a, i, j) => { let s = 0; for (let k = i; k < j; k++) s += a[k]; return s / (j - i); };
   const max = a => { let m = -Infinity; for (const v of a) m = Math.max(m, v); return m; };
@@ -204,6 +204,50 @@
           options: ['Higher interest rates reduce private investment and spending (crowding out)', 'Government spending is not counted in GDP', 'Taxes fall automatically'], answer: () => 0 },
       ],
       takeaway: 'Government spending can soften a slowdown, but the size of the effect depends on how the central bank and households respond. Multipliers are not fixed numbers.',
+    },
+    {
+      id: 'rupee', title: 'Oil, the rupee and imported inflation', topic: 'Exchange rates · trade balance · imported inflation',
+      syllabus: 'BSc International Economics: exchange rates and the balance of payments', minutes: 12,
+      idea: [
+        'India imports most of the oil it uses, along with gas, fertiliser and electronic parts. They are priced in dollars.',
+        'When world oil prices jump, India needs more dollars to pay for the same imports. Importers sell more rupees, so the rupee <b>weakens</b>, which makes imports dearer still. Economists call the result <b>imported inflation</b>.',
+        'Higher interest rates pull foreign money into India and support the rupee. Here you compare three identical economies to see both effects.',
+      ],
+      setup: ['Three copies of the same economy, with the same luck. The rupee starts at ₹83 per dollar.', 'No shock: world oil prices stay steady.', 'Oil shock: world oil prices rise by half in month 3, for 10 months.', 'Oil shock and rate rise: the same shock, but the RBI raises the repo rate by 1.5 points in month 1.'],
+      predict: { q: 'When world oil prices jump, the rupee will…', options: ['Weaken (more rupees per dollar)', 'Strengthen (fewer rupees per dollar)', 'Stay about the same'],
+        actual: d => d.oil.er[11] > d.base.er[11] * 1.005 ? 0 : d.oil.er[11] < d.base.er[11] * 0.995 ? 1 : 2 },
+      async run(seed, tick) {
+        const sh = [{ key: 'oil', start: 2 }];
+        const base = run(seed, { policy: { mode: 'fixed' } }); await tick(1 / 3);
+        const oil = run(seed, { policy: { mode: 'fixed' }, shocks: sh }); await tick(2 / 3);
+        const hike = run(seed, { policy: { mode: 'fixed', repoDelta: 0.015 }, shocks: sh }); await tick(1);
+        return { base, oil, hike };
+      },
+      charts: (d, c) => {
+        const lg = [['No shock', c.hold, 'dash'], ['Oil shock', c.bad], ['Oil shock and rate rise', c.auto]];
+        const s = (k, f) => [{ data: pts(d.base[k], f), color: c.hold, dash: 'dash' }, { data: pts(d.oil[k], f), color: c.bad }, { data: pts(d.hike[k], f), color: c.auto }];
+        const sh = [shade('oil', 2, 'Oil shock')];
+        return [
+          { title: 'Rupees per US dollar', legend: lg, opt: Object.assign({ series: s('er', E.RUPEE_START), shade: sh, minSpan: 2 }, MONTHS) },
+          { title: 'Trade balance, % of GDP', legend: lg, opt: Object.assign({ series: s('tradeBal'), shade: sh }, MONTHS) },
+          { title: 'CPI inflation, %', legend: lg, opt: Object.assign({ series: s('infl'), bandY: [2, 6], shade: sh }, MONTHS) },
+        ];
+      },
+      table: d => ({ caption: 'Results', head: ['Economy', '₹ per $ in month 12', 'Avg trade balance, months 3–14', 'Avg inflation, months 3–14'],
+        rows: [['No shock', d.base], ['Oil shock', d.oil], ['Oil shock and rate rise', d.hike]].map(([n, r]) => [n, '₹' + (r.er[11] * E.RUPEE_START).toFixed(2), pct(mean(r.tradeBal, 2, 14), 2), pct(mean(r.infl, 2, 14), 2)]) }),
+      questions: [
+        { type: 'num', q: 'Use the table. By how many rupees per dollar did the oil shock weaken the rupee by month 12 (oil shock minus no shock)?', unit: '₹', tol: 0.1,
+          answer: d => E.RUPEE_START * (d.oil.er[11] - d.base.er[11]) },
+        { type: 'num', q: 'How large was the average trade deficit in the oil-shock economy in months 3–14, as % of GDP? Enter it as a positive number.', unit: '%', tol: 0.05,
+          answer: d => -100 * mean(d.oil.tradeBal, 2, 14) },
+        { type: 'mcq', q: 'Compared with the oil shock alone, raising rates made the rupee…', options: ['Stronger', 'Weaker', 'No different'],
+          answer: d => d.hike.er[11] < d.oil.er[11] * 0.995 ? 0 : d.hike.er[11] > d.oil.er[11] * 1.005 ? 1 : 2,
+          explain: d => `In month 12 the rupee was ₹${(d.hike.er[11] * E.RUPEE_START).toFixed(2)} with the rate rise and ₹${(d.oil.er[11] * E.RUPEE_START).toFixed(2)} without. Higher Indian rates attract foreign savings, which buy rupees.` },
+        { type: 'mcq', q: 'Why does a rise in world oil prices weaken the rupee?',
+          options: ['India must pay for oil in dollars, so importers sell more rupees to buy them', 'Oil companies are not allowed to use rupees in India', 'Higher oil prices raise India’s exports'], answer: () => 0,
+          explain: () => 'A bigger import bill means more demand for dollars and more supply of rupees in currency markets, so the rupee falls. A weaker rupee then makes every import dearer.' },
+      ],
+      takeaway: 'For an oil importer like India, an oil shock hits twice: dearer oil, and a weaker rupee that makes all imports dearer. Higher interest rates can support the rupee, but only by slowing the economy, which is why the RBI also uses its dollar reserves to steady the currency.',
     },
     {
       id: 'luck', title: 'Luck, noise and why we run many economies', topic: 'Uncertainty · counterfactuals · causal inference',

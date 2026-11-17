@@ -87,7 +87,7 @@
       <div class="shock">
         <span></span><span class="small">Start month</span><span class="small">Size, %</span>
         <label><input type="checkbox" id="sh-monsoon"> Monsoon failure (food)</label><input type="number" id="sh-monsoon-start" min="0" max="200"><input type="number" id="sh-monsoon-depth" min="0" max="30" step="0.5">
-        <label><input type="checkbox" id="sh-oil"> Oil price spike (all firms)</label><input type="number" id="sh-oil-start" min="0" max="200"><input type="number" id="sh-oil-depth" min="0" max="30" step="0.5">
+        <label><input type="checkbox" id="sh-oil"> Oil price spike (world price)</label><input type="number" id="sh-oil-start" min="0" max="200"><input type="number" id="sh-oil-depth" min="0" max="150" step="5">
         <label><input type="checkbox" id="sh-slowdown"> Global slowdown (demand)</label><input type="number" id="sh-slowdown-start" min="0" max="200"><input type="number" id="sh-slowdown-depth" min="0" max="30" step="0.5">
       </div>
     </fieldset>
@@ -99,6 +99,10 @@
         <label class="f">Phillips curve slope<input type="number" id="phillips" min="0" max="3" step="0.1"><span class="hint">how much slack slows wages</span></label>
         <label class="f">Firms repricing each month, %<input type="number" id="calvo" min="5" max="100" step="5"><span class="hint">price stickiness</span></label>
         <label class="f">Food share of spending, %<input type="number" id="foodWeight" min="10" max="80" step="1"><span class="hint">India's CPI: about 46%</span></label>
+        <label class="f">Informal sector size, %<input type="number" id="informal" min="0" max="60" step="5"><span class="hint">40% ≈ 55% of jobs informal</span></label>
+        <label class="f">Imported inputs, % of costs<input type="number" id="importShare" min="0" max="40" step="1"><span class="hint">oil, gas, electronics</span></label>
+        <label class="f">Rupee response to the repo rate<input type="number" id="erRate" min="0" max="10" step="0.5"><span class="hint">% stronger per point of repo</span></label>
+        <label class="f">Export response to the rupee<input type="number" id="exportElast" min="0" max="4" step="0.1"><span class="hint">price elasticity of exports</span></label>
       </div>
       <details>
         <summary>More settings for economists</summary>
@@ -111,6 +115,10 @@
           <label class="f">Monthly quit rate, %<input type="number" id="quitRate" min="0" max="10" step="0.5"></label>
           <label class="f">Unemployment benefit, % of wage<input type="number" id="transferRatio" min="0" max="100" step="5"></label>
           <label class="f">Speed expectations adapt (0–1)<input type="number" id="expLearn" min="0" max="1" step="0.02"></label>
+          <label class="f">Informal productivity, % of formal<input type="number" id="infProd" min="20" max="100" step="5"></label>
+          <label class="f">Moneylender interest rate, %<input type="number" id="infRate" min="0" max="60" step="1"></label>
+          <label class="f">World inflation, %<input type="number" id="worldInfl" min="-2" max="10" step="0.5"></label>
+          <label class="f">Rupee response to foreign debt<input type="number" id="erTrade" min="0" max="10" step="0.5"></label>
         </div>
       </details>
     </fieldset>
@@ -184,15 +192,16 @@
   const $ = id => document.getElementById(id);
 
   // ---------- form fields: id, how the form shows it (percent or plain), default ----------
-  const PCT = new Set(['repo', 'target', 'tax', 'spend', 'calvo', 'foodWeight', 'uNatural', 'quitRate', 'transferRatio']);
+  const PCT = new Set(['repo', 'target', 'tax', 'spend', 'calvo', 'foodWeight', 'uNatural', 'quitRate', 'transferRatio', 'informal', 'importShare', 'infProd', 'infRate', 'worldInfl']);
   const FIELDS = {
     households: D.households, firms: D.firms, months: 36, burnIn: D.burnIn,
-    mode: 'rule', repo: 0.0525, target: D.target, ruleInfl: D.ruleInfl, ruleU: D.ruleU, tax: D.taxRate, spend: D.govShare,
+    mode: 'rule', repo: 0.0625, target: D.target, ruleInfl: D.ruleInfl, ruleU: D.ruleU, tax: D.taxRate, spend: D.govShare,
     anchor: D.anchor, phillips: D.phillips, calvo: D.calvo, foodWeight: D.foodWeight,
     cSens: D.cSens, iSens: D.iSens, aInc: D.aInc, markup: D.markup, uNatural: D.uNatural, quitRate: D.quitRate, transferRatio: D.transferRatio, expLearn: D.expLearn,
+    informal: D.informal, importShare: D.importShare, erRate: D.erRate, exportElast: D.exportElast, infProd: D.infProd, infRate: D.infRate, worldInfl: D.worldInfl, erTrade: D.erTrade,
     runs: 40, seed: 1, sweep: '', sweepFrom: 4, sweepTo: 8, sweepN: 5,
   };
-  const SHOCK_DEF = { monsoon: [false, 3, 6], oil: [false, 3, 3.5], slowdown: [false, 3, 3.5] };
+  const SHOCK_DEF = { monsoon: [false, 3, 6], oil: [false, 3, 50], slowdown: [false, 3, 3.5] };
   const SWEEPS = {
     '': { label: 'Nothing (one setting)' },
     repo: { label: 'Repo rate, % (fixed policy)', unit: '%' },
@@ -203,7 +212,10 @@
     tax: { label: 'Tax rate on wages, %', unit: '%' },
     spend: { label: 'Govt spending, % of output', unit: '%' },
     'sh-monsoon-depth': { label: 'Monsoon shock size, %', unit: '%' },
-    'sh-oil-depth': { label: 'Oil shock size, %', unit: '%' },
+    'sh-oil-depth': { label: 'Oil price rise, %', unit: '%' },
+    informal: { label: 'Informal sector size, %', unit: '%' },
+    importShare: { label: 'Imported inputs, % of costs', unit: '%' },
+    erRate: { label: 'Rupee response to the repo rate' },
     'sh-slowdown-depth': { label: 'Slowdown size, %', unit: '%' },
     households: { label: 'Number of households' },
   };
@@ -211,6 +223,7 @@
     infl: { label: 'CPI inflation, %', s: 100 }, coreInfl: { label: 'Core inflation, %', s: 100 }, foodInfl: { label: 'Food inflation, %', s: 100 },
     u: { label: 'Unemployment, %', s: 100 }, repo: { label: 'Repo rate, %', s: 100 }, Y: { label: 'Real output (start = 100)', s: 1 },
     realWage: { label: 'Real wages (index)', s: 100 }, defRatio: { label: 'Deficit, % of GDP', s: 100 }, debtRatio: { label: 'Debt, % of GDP', s: 100 }, gini: { label: 'Wealth inequality (Gini)', s: 1 },
+    er: { label: 'Rupee, ₹ per US$', s: E.RUPEE_START }, tradeBal: { label: 'Trade balance, % of GDP', s: 100 }, infShare: { label: 'Informal jobs, %', s: 100 },
   };
   const SUMS = [
     ['avgInfl', 'Avg inflation, %', r => mean(r.infl) * 100],
@@ -221,6 +234,9 @@
     ['endY', 'Real output at end', r => r.Y[r.Y.length - 1]],
     ['avgDef', 'Avg deficit, % of GDP', r => mean(r.defRatio) * 100],
     ['endGini', 'Wealth Gini at end', r => r.gini[r.gini.length - 1]],
+    ['endInr', 'Rupee per US$ at end', r => r.er[r.er.length - 1] * E.RUPEE_START],
+    ['avgTb', 'Avg trade balance, % of GDP', r => mean(r.tradeBal) * 100],
+    ['avgInf', 'Informal jobs, %', r => mean(r.infShare) * 100],
   ];
   const mean = a => { let s = 0; for (const x of a) s += x; return s / a.length; };
   const max = a => { let m = -Infinity; for (const x of a) m = Math.max(m, x); return m; };
@@ -228,8 +244,10 @@
 
   const PRESETS = [
     { name: 'Should the RBI hike after a failed monsoon?', set: { mode: 'fixed', months: 36, runs: 40, sweep: 'repo', sweepFrom: 0.04, sweepTo: 0.08, sweepN: 5 }, shocks: { monsoon: [true, 3, 6] } },
-    { name: 'Does trust in the 4% target matter?', set: { mode: 'rule', months: 36, runs: 40, sweep: 'anchor', sweepFrom: 0.1, sweepTo: 0.9, sweepN: 5 }, shocks: { oil: [true, 3, 4] } },
+    { name: 'Does trust in the 4% target matter?', set: { mode: 'rule', months: 36, runs: 40, sweep: 'anchor', sweepFrom: 0.1, sweepTo: 0.9, sweepN: 5 }, shocks: { oil: [true, 3, 50] } },
     { name: 'Fiscal stimulus in a global slowdown', set: { mode: 'rule', months: 36, runs: 40, sweep: 'spend', sweepFrom: 0.04, sweepTo: 0.12, sweepN: 5 }, shocks: { slowdown: [true, 3, 4] } },
+    { name: 'Oil shock: how much does the rupee matter?', set: { mode: 'rule', months: 36, runs: 40, sweep: 'erRate', sweepFrom: 0, sweepTo: 6, sweepN: 4 }, shocks: { oil: [true, 3, 50] } },
+    { name: 'How does a larger informal sector change the economy?', set: { mode: 'rule', months: 60, runs: 30, sweep: 'informal', sweepFrom: 0.1, sweepTo: 0.6, sweepN: 6 } },
     { name: 'Big economy: 10,000 households, 100 runs', set: { households: 10000, firms: 1000, mode: 'rule', months: 48, runs: 100, sweep: '' }, shocks: { monsoon: [true, 6, 6] } },
   ];
 
@@ -275,6 +293,7 @@
           households: h, firms: f, foodFirms: Math.max(1, Math.round(f * 0.3)), burnIn: clampInt(v.burnIn, 24, 240),
           target: o.target, ruleInfl: o.ruleInfl, ruleU: o.ruleU, anchor: o.anchor, phillips: o.phillips, calvo: o.calvo, foodWeight: o.foodWeight,
           cSens: o.cSens, iSens: o.iSens, aInc: o.aInc, markup: o.markup, uNatural: o.uNatural, quitRate: o.quitRate, transferRatio: o.transferRatio, expLearn: o.expLearn,
+          informal: o.informal, importShare: o.importShare, erRate: o.erRate, exportElast: o.exportElast, infProd: o.infProd, infRate: o.infRate, worldInfl: o.worldInfl, erTrade: o.erTrade,
           neutralRepo: D.neutralRepo + (o.target - D.target),
         },
         policy: { mode: o.mode === 'fixed' || v.sweep === 'repo' ? 'fixed' : 'rule', repo: o.repo, tax: o.tax, spend: o.spend },

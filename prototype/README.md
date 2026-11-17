@@ -16,14 +16,14 @@ Students take a policy role and make decisions every few months:
 The game includes:
 - **Two comparison lines.** One shows an identical economy where nothing changed. For the RBI scenarios, the other shows what the RBI's usual policy rule would have done.
 - **"Explain why".** This panel traces your decisions through loan rates, saving, investment, jobs, wages and prices.
-- **Six charts:** inflation (headline, food and core), unemployment, policy settings, real output, a Phillips curve "textbook check", and the government deficit and debt.
-- **Six indicators:** inflation, unemployment, food and core inflation, real wages and wealth inequality (Gini).
+- **Eight charts:** inflation (headline, food and core), unemployment, policy settings, real output, a Phillips curve "textbook check", the government deficit and debt, the rupee in ₹ per US dollar, and the trade balance.
+- **Eight indicators:** inflation, unemployment, food and core inflation, real wages, wealth inequality (Gini), the rupee and the share of informal jobs.
 - **A scorecard** at the end, graded against the "nothing changed" economy.
 - **Copy replay link.** The link reproduces a student's exact game, so a teacher can check it.
 - **Download data (CSV)** of every month, for use in R, Python or Excel.
 
 ## 2. Guided lessons (`lessons.html`)
-Six 10–15 minute lessons, each tied to a BSc or MSc syllabus topic:
+Seven 10–15 minute lessons, each tied to a BSc or MSc syllabus topic:
 
 | # | Lesson | Topic |
 |---|---|---|
@@ -32,7 +32,8 @@ Six 10–15 minute lessons, each tied to a BSc or MSc syllabus topic:
 | 3 | How a rate hike travels through the economy | Monetary transmission; policy lags |
 | 4 | Why trust in the 4% target matters | Inflation expectations; credibility |
 | 5 | The fiscal multiplier in a slowdown | Multiplier; crowding out |
-| 6 | Luck, noise and why we run many economies | Uncertainty; counterfactuals |
+| 6 | Oil, the rupee and imported inflation | Exchange rates; trade balance |
+| 7 | Luck, noise and why we run many economies | Uncertainty; counterfactuals |
 
 Each lesson follows predict, run, answer:
 - Students **predict** the result first. The prediction isn't graded, but the page shows it next to what happened.
@@ -48,6 +49,7 @@ Students and economists can design their own experiments:
 - **Run length:** up to 240 months, after a warm-up period.
 - **Policy:** the RBI's rule with adjustable responses, or a fixed repo rate. Also the inflation target, tax rate and government spending.
 - **Shocks:** monsoon, oil or slowdown, each with its own start month and size.
+- **India's structure:** the size of the informal sector, imported inputs, and how the rupee and exports respond. Economists can also set informal productivity, the moneylender rate, world inflation and how the rupee reacts to foreign debt.
 - **Behaviour:** expectations anchoring, the Phillips curve slope, price stickiness and food share. Economists can also change consumption and investment sensitivity, markups, natural unemployment, quit rates, benefits and how fast expectations adapt.
 - **Many economies:** each run uses up to 1,000 economies that follow the same rules but have different luck. You can also vary one setting across up to 12 values.
 
@@ -58,13 +60,22 @@ Runs happen in parallel in the browser. 100 economies of 10,000 households each 
 
 You can download a summary CSV or every run as CSV. "Copy settings" saves the experiment as text, so anyone can load it and repeat it exactly.
 
+## How the economy works
+- **Informal sector.** About 55% of jobs are informal. Informal firms pay no tax on wages and are less productive. They borrow from moneylenders at 24%, a rate that doesn't move with the repo rate, which weakens monetary policy. Workers without formal qualifications or documents can only find informal jobs. Everyone pays GST on what they buy.
+- **Rupee and trade.** Firms import inputs such as oil, and non-food firms export. The rupee starts each game at ₹83 per US dollar and floats:
+  - it weakens when Indian inflation runs above world inflation, or when foreign debt builds up;
+  - it strengthens when the RBI raises rates.
+- **Oil shocks** raise world oil prices, which widens the trade deficit and weakens the rupee.
+
 ## Files
 - `engine.js`: the agent-based model. Households, firms, a banking sector, the government and the RBI interact every month. The accounts are checked every month, and the same economy number always gives the same run.
-- `lessons-data.js`: the six lessons, their experiments and grading.
+- `lessons-data.js`: the seven lessons, their experiments and grading.
 - `charts.js`, `shared.css`: charts and styles shared by all pages (light and dark themes).
-- `test.js`: 20 automated checks, including that every lesson gives its intended result and grades correctly. Run `node test.js`.
+- `test.js`: 26 automated checks. They cover the rupee, trade and informal sector, and confirm that every lesson gives its intended result and grades correctly. Run `node test.js`.
 
 ## Known limits (prototype)
 - Teaching tool, not a forecast. Parameters are hand-tuned to India-like levels, not estimated from RBI, MOSPI or PLFS data.
-- Two goods sectors and one simplified bank. There's no exchange rate, capital stock or informal sector yet.
+- Two goods sectors and one simplified bank. There's no capital stock yet.
+- The rupee is set by relative prices, interest rates and foreign debt, with some random capital-flow noise. The RBI doesn't yet use its dollar reserves to steady it.
+- The labour market is split: informal workers can't move into formal jobs. Real-world movement between the two sectors isn't modelled yet.
 - With the repo rate held fixed for many years the economy drifts. The warm-up therefore uses the RBI's rule.

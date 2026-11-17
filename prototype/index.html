@@ -83,6 +83,8 @@
         <div class="tile"><div class="k">Core inflation</div><div class="v" id="t-core"></div><div class="d" id="d-core"></div></div>
         <div class="tile"><div class="k">Real wages</div><div class="v" id="t-rw"></div><div class="d" id="d-rw"></div></div>
         <div class="tile"><div class="k">Wealth inequality</div><div class="v" id="t-gini"></div><div class="d" id="d-gini"></div></div>
+        <div class="tile"><div class="k">Rupee per US$</div><div class="v" id="t-inr"></div><div class="d" id="d-inr"></div></div>
+        <div class="tile"><div class="k">Informal jobs</div><div class="v" id="t-inf"></div><div class="d" id="d-inf"></div></div>
       </div>
       <p class="small" style="margin-top:8px">Target: 4% CPI inflation within a 2–6% band. Real wages: index, 100 = start of warm-up. Inequality: Gini, 0 = equal. Arrows compare with the last decision.</p>
     </div>
@@ -121,6 +123,10 @@
         <div class="legend"><span><i style="border-color:var(--accent)"></i>Your economy (latest = largest)</span><span><i class="dash" style="border-color:var(--hold)"></i>π = πᵉ − 0.6 × (u − 7%)</span></div></div>
       <div class="card chart"><h3>Government deficit, % of GDP</h3><p class="sub" id="debt-note"></p><canvas id="c-def"></canvas>
         <div class="legend"><span><i style="border-color:var(--accent)"></i>Your economy</span><span class="lg-hold"><i class="dash" style="border-color:var(--hold)"></i>Nothing changed</span></div></div>
+      <div class="card chart"><h3>The rupee, ₹ per US dollar</h3><p class="sub">Up means a weaker rupee: imported oil and parts cost more, exports get cheaper abroad.</p><canvas id="c-inr"></canvas>
+        <div class="legend"><span><i style="border-color:var(--ink)"></i>Your economy</span><span class="lg-hold"><i class="dash" style="border-color:var(--hold)"></i>Nothing changed</span><span class="lg-auto"><i class="dot" style="border-color:var(--auto)"></i>RBI rule</span></div></div>
+      <div class="card chart"><h3>Trade balance, % of GDP</h3><p class="sub">Exports minus imports. Below zero is a trade deficit.</p><canvas id="c-tb"></canvas>
+        <div class="legend"><span><i style="border-color:var(--accent)"></i>Your economy</span><span class="lg-hold"><i class="dash" style="border-color:var(--hold)"></i>Nothing changed</span></div></div>
     </div>
   </section>
 
@@ -128,7 +134,7 @@
     <div class="card">
       <h3>1,000 households</h3>
       <canvas id="dots"></canvas>
-      <div class="legend"><span><i style="border-color:var(--food)"></i>Work in food</span><span><i style="border-color:var(--ink)"></i>Work elsewhere</span><span><i style="border-color:var(--accent)"></i>Unemployed</span></div>
+      <div class="legend"><span><i style="border-color:var(--ink)"></i>Formal job</span><span><i style="border-color:var(--food)"></i>Informal job</span><span><i style="border-color:var(--accent)"></i>Unemployed</span></div>
     </div>
     <div class="card explain"><h3>Explain why</h3><div id="explain"></div></div>
     <div class="card score" id="scorecard" hidden></div>
@@ -231,16 +237,18 @@
     tile('infl', h.infl, prev.infl, 'pct', 1); tile('u', h.u, prev.u, 'pct', 1); tile('food', h.foodInfl, prev.foodInfl, 'pct', 1); tile('core', h.coreInfl, prev.coreInfl, 'pct', 1);
     tile('rw', h.realWage, prev.realWage, 'index', -1);
     tile('gini', h.gini, prev.gini, 'gini', 1);
+    tile('inr', h.er * E.RUPEE_START, prev.er * E.RUPEE_START, 'inr', 1);
+    tile('inf', h.infShare, prev.infShare, 'pct', 1);
     renderControls(); drawCharts(); drawDots(); explain(); score();
-    $('hood').textContent = `Every month firms set wages and prices and hire or fire; households look for work, spend and save; banks lend; the government taxes and spends; the RBI sets the repo rate. Loan rate now ${pct(p.rates().loan, 2)}. Expected inflation ${pct(h.piE)}.`;
+    $('hood').textContent = `Every month firms set wages and prices, import inputs, export and hire or fire; households look for work, spend and save; banks and moneylenders lend; the government taxes wages and collects GST; the rupee floats; the RBI sets the repo rate. ${pct(h.infShare, 0)} of jobs are informal: untaxed, less productive and financed by moneylenders. Bank loan rate now ${pct(p.rates().loan, 2)}. Expected inflation ${pct(h.piE)}.`;
     $('check').textContent = `✓ Accounts balance every month: every rupee lent is a rupee deposited. Run fingerprint ${p.hash()}.`;
   }
 
   // kind: 'pct' | 'index' | 'gini'; sign +1 = a rise is bad (red), -1 = a rise is good (green)
   function tile(k, v, before, kind, sign) {
-    const show = x => kind === 'pct' ? pct(x) : kind === 'index' ? (100 * x).toFixed(1) : x.toFixed(3);
-    const showD = x => kind === 'pct' ? (100 * x).toFixed(1) + ' pts' : kind === 'index' ? (100 * x).toFixed(1) : x.toFixed(3);
-    const tiny = kind === 'pct' ? 0.0005 : kind === 'index' ? 0.0005 : 0.0005;
+    const show = x => kind === 'pct' ? pct(x) : kind === 'index' ? (100 * x).toFixed(1) : kind === 'inr' ? '₹' + x.toFixed(2) : x.toFixed(3);
+    const showD = x => kind === 'pct' ? (100 * x).toFixed(1) + ' pts' : kind === 'index' ? (100 * x).toFixed(1) : kind === 'inr' ? '₹' + x.toFixed(2) : x.toFixed(3);
+    const tiny = kind === 'inr' ? 0.005 : 0.0005;
     $('t-' + k).textContent = show(v);
     const d = v - before, el = $('d-' + k);
     el.className = 'd ' + (Math.abs(d) < tiny ? 'flat' : sign * d > 0 ? 'up' : 'down');
@@ -278,6 +286,9 @@
     const piE = 100 * game.player.piE;
     Ch.scatter($('c-ph'), { points: ph, color: tok('--accent'), xLabel: 'unemployment, %', ref: { x0: 3, y0: piE - 0.6 * (3 - 7), x1: 14, y1: piE - 0.6 * (14 - 7), color: tok('--hold') } });
     Ch.line($('c-def'), Object.assign({}, base, { minSpan: 2, series: [{ data: pts(Hd, 'defRatio'), color: tok('--hold'), dash: 'dash' }, { data: pts(P, 'defRatio'), color: tok('--accent'), width: 2.4, end: true }] }));
+    const inr = arr => arr.map(r => ({ x: r.t + 1, y: r.er * E.RUPEE_START }));
+    Ch.line($('c-inr'), Object.assign({}, base, { minSpan: 2, series: [{ data: inr(Hd), color: tok('--hold'), dash: 'dash' }, { data: inr(Au), color: tok('--auto'), dash: 'dot' }, { data: inr(P), color: tok('--ink'), width: 2.4, end: true }] }));
+    Ch.line($('c-tb'), Object.assign({}, base, { minSpan: 2, series: [{ data: pts(Hd, 'tradeBal'), color: tok('--hold'), dash: 'dash' }, { data: pts(P, 'tradeBal'), color: tok('--accent'), width: 2.4, end: true }] }));
     const last = game.player.hist[game.player.hist.length - 1];
     $('debt-note').textContent = `Government debt now ${pct(last.debtRatio, 0)} of a year's GDP.`;
   }
@@ -293,7 +304,7 @@
     const cU = tok('--accent'), cF = tok('--food'), cO = tok('--ink');
     for (let i = 0; i < s.H; i++) {
       const f = s.emp[i];
-      g.fillStyle = f < 0 ? cU : s.isFood[f] ? cF : cO;
+      g.fillStyle = f < 0 ? cU : s.isInf[f] ? cF : cO;
       g.beginPath(); g.arc((i % cols + 0.5) * cw, (Math.floor(i / cols) + 0.5) * ch, r, 0, Math.PI * 2); g.fill();
     }
   }
@@ -308,7 +319,8 @@
     const items = [];
     if (Math.abs(p.repo - q.repo) > 1e-9) {
       items.push(`${game.scenario.levers.includes('repo') ? 'Repo' : 'The RBI reacted to your budget: repo'} ${pct(p.repo, 2)} vs ${pct(q.repo, 2)}, so banks lend at ${pct(p.loanRate, 2)} instead of ${pct(q.loanRate, 2)}.`);
-      items.push(`Households ${p.aInc < q.aInc ? 'save more' : 'save less'}: they spend ${(100 * p.aInc).toFixed(1)}% of income vs ${(100 * q.aInc).toFixed(1)}%. Firms' investment is ${pc(p.I / q.I - 1)}.`);
+      items.push(`Households ${p.aInc < q.aInc ? 'save more' : 'save less'}: they spend ${(100 * p.aInc).toFixed(1)}% of income vs ${(100 * q.aInc).toFixed(1)}%. Firms' investment is ${pc(p.I / q.I - 1)}. Informal firms borrow from moneylenders, so their investment doesn't respond.`);
+      items.push(`The rupee is ₹${(p.er * E.RUPEE_START).toFixed(2)} per dollar vs ₹${(q.er * E.RUPEE_START).toFixed(2)}. ${p.er < q.er ? 'Higher rates attract foreign money, so the rupee is stronger: imported oil and parts are cheaper, but exports lose orders.' : 'Lower rates push money abroad, so the rupee is weaker: imports cost more, but exports gain orders.'}`);
     }
     if (Math.abs(p.taxRate - q.taxRate) > 1e-9) items.push(`Tax on wages ${pct(p.taxRate)} vs ${pct(q.taxRate)}: workers keep ${p.taxRate < q.taxRate ? 'more' : 'less'} of each rupee, so consumer spending is ${pc((p.C / p.cpi) / (q.C / q.cpi) - 1)} in real terms.`);
     if (Math.abs(p.govShare - q.govShare) > 1e-9) items.push(`The government buys ${pct(p.govShare)} of normal output vs ${pct(q.govShare)}, so firms get ${pc(p.G / q.G - 1)} in government orders.`);
@@ -318,7 +330,7 @@
     if (Math.abs(p.taxRate - q.taxRate) + Math.abs(p.govShare - q.govShare) > 1e-9) items.push(`The deficit is ${pct(p.defRatio)} of GDP vs ${pct(q.defRatio)}.`);
     let html = '<ol>' + items.map(s => `<li>${s}</li>`).join('') + '</ol>';
     const live = game.player.shocks.some(s => s.type !== 'confidence' && game.month >= s.start && game.month <= s.start + s.months + 4);
-    if (live) html += '<p class="small" style="margin-top:6px">A supply shock raises costs directly; interest rates cannot reverse it. Rates work mainly through spending, jobs and wages.</p>';
+    if (live) html += '<p class="small" style="margin-top:6px">A supply shock raises costs directly; interest rates cannot reverse it. Rates work mainly through spending, jobs, wages and the rupee.</p>';
     el.innerHTML = html;
   }
 
@@ -356,10 +368,10 @@
     Ch.toast((await Ch.copyText(url)) ? 'Replay link copied. Anyone who opens it sees this exact game.' : 'Copy this link from the address bar: ' + url);
   };
   $('csv').onclick = () => {
-    const cols = ['month', 'repo_pct', 'tax_pct', 'spend_pct', 'cpi_inflation_pct', 'food_inflation_pct', 'core_inflation_pct', 'unemployment_pct', 'real_output', 'real_wage_index', 'deficit_pct_gdp', 'debt_pct_gdp', 'wealth_gini', 'nochange_inflation_pct', 'nochange_unemployment_pct', 'rbirule_inflation_pct', 'rbirule_unemployment_pct'];
+    const cols = ['month', 'repo_pct', 'tax_pct', 'spend_pct', 'cpi_inflation_pct', 'food_inflation_pct', 'core_inflation_pct', 'unemployment_pct', 'real_output', 'real_wage_index', 'deficit_pct_gdp', 'debt_pct_gdp', 'wealth_gini', 'rupee_per_usd', 'trade_balance_pct_gdp', 'informal_jobs_pct', 'nochange_inflation_pct', 'nochange_unemployment_pct', 'rbirule_inflation_pct', 'rbirule_unemployment_pct'];
     const P = game.player.hist.filter(r => r.t >= 0), Hd = game.hold.hist.filter(r => r.t >= 0), Au = game.auto ? game.auto.hist.filter(r => r.t >= 0) : [];
     const f = (x, d = 3) => (+x).toFixed(d);
-    const lines = P.map((r, i) => [r.t + 1, f(100 * r.repo, 2), f(100 * r.taxRate, 1), f(100 * r.govShare, 1), f(100 * r.infl), f(100 * r.foodInfl), f(100 * r.coreInfl), f(100 * r.u, 2), f(r.Y, 1), f(100 * r.realWage, 2), f(100 * r.defRatio), f(100 * r.debtRatio, 2), f(r.gini, 4),
+    const lines = P.map((r, i) => [r.t + 1, f(100 * r.repo, 2), f(100 * r.taxRate, 1), f(100 * r.govShare, 1), f(100 * r.infl), f(100 * r.foodInfl), f(100 * r.coreInfl), f(100 * r.u, 2), f(r.Y, 1), f(100 * r.realWage, 2), f(100 * r.defRatio), f(100 * r.debtRatio, 2), f(r.gini, 4), f(r.er * E.RUPEE_START, 2), f(100 * r.tradeBal), f(100 * r.infShare, 1),
       Hd[i] ? f(100 * Hd[i].infl) : '', Hd[i] ? f(100 * Hd[i].u, 2) : '', Au[i] ? f(100 * Au[i].infl) : '', Au[i] ? f(100 * Au[i].u, 2) : ''].join(','));
     const ok = Ch.downloadText(`economy-lab-${scenarioId}-${game.player.P.seed}.csv`, [cols.join(',')].concat(lines).join('\n'));
     Ch.toast(ok ? 'Data downloaded.' : 'This viewer blocks downloads. Open the page from GitHub to download data.');

@@ -68,11 +68,37 @@ big.run(big.P.burnIn + 60);
 const bh = big.hist.slice(-60);
 check(Math.abs(avg(bh, 'infl') - 0.04) < 0.02 && avg(bh, 'u') < 0.12, `10,000-household economy is stable (inflation ${pct(avg(bh, 'infl'))}, unemployment ${pct(avg(bh, 'u'))})`);
 
-// 6. Guided lessons: every lesson teaches the intended result in several students' economies
+// 6. Open economy and informal sector
+{
+  const E = require('./engine.js');
+  const mean = (a, i, j) => { let x = 0; for (let k = i; k < j; k++) x += a[k]; return x / (j - i); };
+  const F = ['infl', 'u', 'er', 'tradeBal', 'infShare'];
+  const b = E.runLab({ seed: 28, months: 36, fields: F, policy: { mode: 'fixed' } });
+  const o = E.runLab({ seed: 28, months: 36, fields: F, policy: { mode: 'fixed' }, shocks: [{ key: 'oil', start: 2 }] });
+  const h = E.runLab({ seed: 28, months: 36, fields: F, policy: { mode: 'fixed', repoDelta: 0.02 } });
+  check(Math.abs(mean(b.tradeBal, 0, 36)) < 0.01, `trade is roughly balanced without shocks (${pct(mean(b.tradeBal, 0, 36))} of GDP)`);
+  check(o.er[11] > b.er[11] * 1.01 && mean(o.tradeBal, 2, 14) < mean(b.tradeBal, 2, 14) - 0.01,
+    `oil shock weakens the rupee (${pct(o.er[11] / b.er[11] - 1)}) and opens a trade deficit`);
+  check(h.er[5] < b.er[5] * 0.99, `a rate hike strengthens the rupee (${pct(h.er[5] / b.er[5] - 1)})`);
+  const s0 = mean(b.infShare, 0, 12), s1 = mean(b.infShare, 24, 36);
+  check(s0 > 0.4 && s0 < 0.7 && Math.abs(s1 - s0) < 0.03, `informal share of jobs is stable (${pct(s0)} → ${pct(s1)})`);
+  let dLo = 0, dHi = 0;
+  for (const seed of [28, 3, 57, 90, 11]) {
+    for (const [inf, add] of [[0.1, x => { dLo += x; }], [0.6, x => { dHi += x; }]]) {
+      const P = { informal: inf };
+      const x = E.runLab({ seed, months: 24, params: P, fields: ['infl'], policy: { mode: 'fixed' } });
+      const y = E.runLab({ seed, months: 24, params: P, fields: ['infl'], policy: { mode: 'fixed', repoDelta: 0.02 } });
+      add(mean(x.infl, 12, 24) - mean(y.infl, 12, 24));
+    }
+  }
+  check(dHi < dLo, `a larger informal sector weakens the effect of a rate hike on inflation (${pct(dLo / 5)} → ${pct(dHi / 5)})`);
+}
+
+// 7. Guided lessons: every lesson teaches the intended result in several students' economies
 globalThis.EconEngine = require('./engine.js');
 require('./lessons-data.js');
 const { LESSONS, grade } = globalThis.EconLessons;
-const expect = { monsoon: 0, phillips: 0, transmission: 0, anchor: 1, multiplier: null, luck: 1 };
+const expect = { monsoon: 0, phillips: 0, transmission: 0, anchor: 1, multiplier: null, rupee: 0, luck: 1 };
 (async () => {
   for (const L of LESSONS) {
     let ok = true, why = '';

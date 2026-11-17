@@ -1,7 +1,11 @@
 /*
  * Economy Lab — prototype engine
  * A small agent-based model of an Indian-style economy:
- * 1,000 households, 100 firms (30 food, 70 non-food), a banking sector, the RBI and the government.
+ * 1,000 households, 100 firms (30 food, 70 non-food), a banking sector, the RBI, the government
+ * and the rest of the world. Some firms are informal: they pay no tax on wages, have lower
+ * productivity and borrow from moneylenders rather than banks. The labour market is split:
+ * workers without formal qualifications or documents can only find informal jobs. Firms import inputs such as oil,
+ * sell exports abroad, and the rupee floats.
  * Every rupee moves between accounts, and an accounting check runs every month.
  * Runs in the browser (window.EconEngine) and in Node (require('./engine.js')).
  */
@@ -55,10 +59,26 @@
     invTarget: 0.5, muInv: 0.05, invAdj: 0.2,
     fireCap: 0.25, quitRate: 0.01, searchTries: 6, resDecay: 0.95,
     taxRate: 0.10, transferRatio: 0.3, govShare: 0.06,
+    gst: null,                 // GST on household purchases, paid by everyone including informal workers.
+                               // null: set automatically to make up for the untaxed informal wage bill
+    gstAuto: 1.3,
     aInc: 0.9, aW: 0.05, cSens: 1.0,   // consumption out of income and wealth; sensitivity to real interest
     iShare: 0.10, iSens: 7,            // investment spending and its sensitivity to real loan rates
     foodDecay: 0.10, goodsDecay: 0.02,
     switchProb: 0.05,
+    // open economy: the rupee, imports and exports
+    importShare: 0.15,         // imported inputs (oil, components) as a share of firms' unit costs
+    exportElast: 1.5,          // how strongly exports respond to a cheaper rupee
+    importSubst: 0.5,          // how much firms cut imported inputs when they get dearer
+    worldInfl: 0.02,           // inflation in the rest of the world
+    erRate: 3,                 // a 1-point higher repo rate (versus neutral) strengthens the rupee by about 3%
+    erTrade: 2,                // foreign debt of 1% of a year's GDP weakens the rupee by about 2%
+    erAdj: 0.1,                // share of the gap to its fundamental value the rupee closes each month
+    erNoise: 0.004,            // monthly capital-flow noise in the rupee
+    // informal sector
+    informal: 0.4,             // informal firms: about 1.6× this share of food firms and 0.8× of non-food firms
+    infProd: 0.6, infWage: 0.6, // informal productivity and starting wages, relative to formal firms
+    infRate: 0.24,             // moneylender interest rate; it doesn't move with the repo rate
     shocks: [],
   };
 
@@ -91,7 +111,8 @@
       this.inc = new Float64Array(H);
       this.partners = new Int32Array(H * 5); // 2 food + 3 non-food sellers per household
 
-      this.isFood = new Uint8Array(F);
+      this.revC = new Float64Array(F);
+      this.isFood = new Uint8Array(F); this.isInf = new Uint8Array(F); this.hhInf = new Uint8Array(H); this.impPaid = new Float64Array(F);
       this.p = new Float64Array(F); this.w = new Float64Array(F);
       this.lam = new Float64Array(F); this.lamEff = new Float64Array(F);
       this.inv = new Float64Array(F); this.ed = new Float64Array(F);
@@ -104,24 +125,53 @@
       const nEmp = Math.round(H * (1 - P.uNatural));
       const nFoodW = Math.round(nEmp * 0.39);
       const nNon = F - P.foodFirms;
-      for (let i = 0; i < nEmp; i++) {
-        this.emp[i] = i < nFoodW ? i % P.foodFirms : P.foodFirms + ((i - nFoodW) % nNon);
-      }
-      for (let i = 0; i < H; i++) if (this.emp[i] >= 0) this.n[this.emp[i]]++;
+      // imported inputs per unit of output, chosen so they are importShare of unit cost at the start
+      this.impCost0 = (P.wage0 / P.productivity) * P.importShare / (1 - P.importShare);
+      const infF = Math.round(Math.min(0.9, 1.6 * P.informal) * P.foodFirms), infN = Math.round(Math.min(0.9, 0.8 * P.informal) * nNon);
       for (let f = 0; f < F; f++) {
         this.isFood[f] = f < P.foodFirms ? 1 : 0;
-        this.lam[f] = this.lamEff[f] = P.productivity;
-        this.w[f] = P.wage0;
-        this.p[f] = (1 + P.markup) * P.wage0 / P.productivity;
-        this.ed[f] = this.sales[f] = this.n[f] * P.productivity;
+        this.isInf[f] = f < P.foodFirms ? (f >= P.foodFirms - infF ? 1 : 0) : (f >= F - infN ? 1 : 0);
+        this.lam[f] = this.lamEff[f] = P.productivity * (this.isInf[f] ? P.infProd : 1);
+        this.w[f] = P.wage0 * (this.isInf[f] ? P.infWage : 1);
+      }
+      // every firm starts with the same sales, so less productive informal firms employ more workers
+      const assign = (lo, hi, workers, start) => {
+        let tot = 0;
+        for (let f = lo; f < hi; f++) tot += 1 / this.lam[f];
+        let i = start, acc = 0;
+        for (let f = lo; f < hi; f++) {
+          acc += workers * (1 / this.lam[f]) / tot;
+          const upto = start + (f === hi - 1 ? workers : Math.round(acc));
+          for (; i < upto; i++) { this.emp[i] = f; this.n[f]++; }
+        }
+        return i;
+      };
+      assign(P.foodFirms, F, nEmp - nFoodW, assign(0, P.foodFirms, nFoodW, 0));
+      if (P.gst == null) {
+        let wbInf = 0, wb = 0;
+        for (let f = 0; f < F; f++) { wb += this.n[f] * this.w[f]; if (this.isInf[f]) wbInf += this.n[f] * this.w[f]; }
+        P.gst = P.gstAuto * P.taxRate * wbInf / wb;
+      }
+      this.p0 = (1 + P.markup) * (P.wage0 / P.productivity + this.impCost0) * (1 + P.gst);
+      this.formalFirms = []; this.infFirms = [];
+      for (let f = 0; f < F; f++) (this.isInf[f] ? this.infFirms : this.formalFirms).push(f);
+      let nInfW = 0;
+      for (let i = 0; i < nEmp; i++) if (this.isInf[this.emp[i]]) { this.hhInf[i] = 1; nInfW++; }
+      for (let i = nEmp, k = 0; i < H; i++, k++) this.hhInf[i] = (k + 0.5) / (H - nEmp) < nInfW / nEmp ? 1 : 0; // the unemployed in proportion
+      let Y0 = 0;
+      for (let f = 0; f < F; f++) {
+        this.p[f] = this.p0;
+        this.ed[f] = this.sales[f] = this.n[f] * this.lam[f];
+        Y0 += this.ed[f];
         this.inv[f] = P.invTarget * this.ed[f];
         this.rev[f] = this.sales[f] * this.p[f];
         this.d[f] = 1.5 * this.n[f] * this.w[f];
       }
       const r = mulberry32(mix(P.seed, 0, 99));
       for (let i = 0; i < H; i++) {
-        const y = this.emp[i] >= 0 ? P.wage0 * (1 - P.taxRate) : P.transferRatio * P.wage0;
-        this.yhat[i] = y; this.m[i] = (1 - P.aInc) / P.aW * y; this.resW[i] = P.wage0;
+        const f = this.emp[i];
+        const y = f < 0 ? P.transferRatio * P.wage0 : this.isInf[f] ? this.w[f] : P.wage0 * (1 - P.taxRate);
+        this.yhat[i] = y; this.m[i] = (1 - P.aInc) / P.aW * y; this.resW[i] = P.wage0 * (this.hhInf[i] ? P.infWage : 1);
         for (let k = 0; k < 5; k++) this.partners[i * 5 + k] = this.randFirm(r, k < 2);
       }
       let money = 0;
@@ -129,12 +179,15 @@
       for (let f = 0; f < F; f++) money += this.d[f];
       this.gov = -money; // the starting money stock is treated as past government spending
 
-      this.baseUnits = nEmp * P.productivity;
-      this.p0 = (1 + P.markup) * P.wage0 / P.productivity;
+      this.baseUnits = Y0;
+      // the rest of the world: the rupee (index, 1 at the start), world prices, and its rupee balances
+      this.er = 1; this.pw = 1; this.row = 0; this.tbS = 0;
+      this.erBase = 1; // reported rupee index is rescaled to 1 when the game starts (month 0)
+      this.x0 = Y0 * this.impCost0 / this.p0; // exports start equal to imports in value
       this.pf = this.pn = this.p0;
       this.uLast = P.uNatural;
       this.piE = this.piAd = P.target;
-      this.lastY = nEmp * P.productivity;
+      this.lastY = Y0;
       this.hist = [];
     }
 
@@ -159,10 +212,16 @@
     shockFactor(f, t) {
       let k = 1;
       for (const s of this.shocks) {
-        if (s.type === 'confidence') continue;
+        if (s.type !== 'harvest') continue;
         if (s.sector === 'food' && !this.isFood[f]) continue;
         k *= 1 - s.depth * Sim.shape(s, t);
       }
+      return k;
+    }
+    // oil shocks raise the world price of imported inputs
+    importFactor(t) {
+      let k = 1;
+      for (const s of this.shocks) if (s.type === 'oil') k *= 1 + s.depth * Sim.shape(s, t);
       return k;
     }
     // demand shocks: a global slowdown makes households and firms spend less
@@ -214,6 +273,12 @@
       const conf = this.demandFactor(t);
       const iFactor = clamp(1 - P.iSens * (rt.loan - piE - nRealLoan), 0.3, 1.5) * (1 - 3 * (1 - conf));
       const aInc = clamp(P.aInc - P.cSens * (rt.deposit - piE - nRealDep), 0.75, 0.98) * conf;
+      const iFactorInf = 1 - 3 * (1 - conf);                 // moneylender rates don't follow the repo rate
+      this.pw *= Math.pow(1 + P.worldInfl, 1 / 12);
+      // rupee cost of imported inputs per unit of output; firms use less of them when they get dearer
+      const cpiPrev = this.hist.length ? this.hist[this.hist.length - 1].cpi : 1;
+      const relImp = this.er * this.pw * this.importFactor(t) / cpiPrev;
+      const uc = this.impCost0 * Math.pow(relImp, 1 - P.importSubst) * cpiPrev;
 
       // 3. firms plan output, wages and prices
       let r = R(1);
@@ -226,12 +291,12 @@
         const ratio = inv[f] / Math.max(ed[f], 1e-9);
         const mu = clamp(P.markup + P.muInv * (P.invTarget - ratio), 0.02, 0.6);
         if (r() < P.calvo) {
-          const target = (1 + mu) * w[f] / lamEff[f];
+          const target = (1 + mu) * (w[f] / lamEff[f] + uc) * (1 + P.gst);
           p[f] = target >= p[f] ? target : p[f] - P.priceCut * (p[f] - target); // prices fall more slowly than they rise
         }
         vac[f] = Math.max(0, nStar - n[f]);
         fire[f] = Math.max(0, Math.min(n[f] - nStar, Math.ceil(P.fireCap * n[f])));
-        invest[f] = P.iShare * rev[f] * iFactor;
+        invest[f] = P.iShare * rev[f] * (this.isInf[f] ? iFactorInf : iFactor);
       }
 
       // layoffs and quits
@@ -246,18 +311,20 @@
 
       // 4. credit: firms borrow to cover wages and investment
       for (let f = 0; f < F; f++) {
-        const need = (n[f] + vac[f]) * w[f] + invest[f];
+        const need = (n[f] + vac[f]) * (w[f] + lamEff[f] * uc) + invest[f];
         if (d[f] < need) { const b = need - d[f] + 0.1 * n[f] * w[f]; L[f] += b; d[f] += b; }
       }
 
-      // 5. labour market: the unemployed visit random firms
+      // 5. labour market: the unemployed visit random firms in their own segment (formal or informal)
       r = R(3);
       for (let k = 0; k < H; k++) {
         const i = order[k];
         if (emp[i] >= 0) continue;
+        const pool = this.hhInf[i] ? this.infFirms : this.formalFirms;
+        if (!pool.length) continue;
         let hired = false;
         for (let s = 0; s < P.searchTries; s++) {
-          const f = Math.floor(r() * F);
+          const f = pool[Math.floor(r() * pool.length)];
           if (vac[f] > 0 && w[f] >= this.resW[i]) { emp[i] = f; n[f]++; vac[f]--; this.resW[i] = w[f]; hired = true; break; }
         }
         if (!hired) this.resW[i] *= P.resDecay;
@@ -265,15 +332,19 @@
       for (let f = 0; f < F; f++) unfilled[f] = vac[f];
 
       // 6. production
-      let Y = 0;
-      for (let f = 0; f < F; f++) { const y = lamEff[f] * n[f]; inv[f] += y; Y += y; }
+      let Y = 0, M = 0;
+      for (let f = 0; f < F; f++) {
+        const y = lamEff[f] * n[f]; inv[f] += y; Y += y;
+        const imp = y * uc; d[f] -= imp; this.row += imp; this.impPaid[f] = imp; M += imp; // imported inputs are paid abroad
+      }
 
       // 7. wages, taxes and transfers
-      let wages = 0, employed = 0, taxes = 0, transfers = 0;
+      let wages = 0, employed = 0, taxes = 0, transfers = 0, infEmployed = 0;
       for (let i = 0; i < H; i++) {
         const f = emp[i];
         if (f < 0) continue;
-        const pay = w[f], tax = pay * this.taxRate;
+        if (this.isInf[f]) infEmployed++;
+        const pay = w[f], tax = this.isInf[f] ? 0 : pay * this.taxRate; // informal wages go untaxed
         d[f] -= pay; this.gov += tax; m[i] += pay - tax; inc[i] += pay - tax;
         wages += pay; employed++; taxes += tax;
       }
@@ -307,11 +378,18 @@
         const spent = this.buyFrom(food, C * P.foodWeight) + this.buyFrom(non, C * (1 - P.foodWeight));
         m[i] -= spent; consumption += spent;
       }
+      this.revC.set(rev); // household purchases, which carry GST
       // government buys non-food goods and services
       const G = this.govShare * this.baseUnits * this.pn;
       let gSpent = 0;
       for (let s = 0; s < Math.max(40, 2 * F) && G - gSpent > 1e-6; s++) gSpent += this.buyFrom([this.randFirm(r, false)], G - gSpent);
       this.gov -= gSpent;
+      // the rest of the world buys exports from non-food firms; a cheaper rupee makes them more competitive
+      const q = this.er * this.pw / (this.pn / this.p0);
+      const Xwant = this.x0 * Math.max(0.2, 1 - 3 * (1 - conf)) * Math.pow(q, P.exportElast) * this.pn;
+      let X = 0;
+      for (let s = 0; s < Math.max(40, 2 * F) && Xwant - X > 1e-6; s++) X += this.buyFrom([this.randFirm(r, false)], Xwant - X);
+      this.row -= X;
       // firms buy capital goods from non-food firms
       let I = 0;
       for (let f = 0; f < F; f++) {
@@ -327,10 +405,12 @@
       // 9. interest, loan repayment, dividends
       let pool = 0;
       for (let f = 0; f < F; f++) {
-        const interest = L[f] * rt.loan / 12;
+        const gstDue = this.revC[f] * P.gst / (1 + P.gst);
+        d[f] -= gstDue; this.gov += gstDue; taxes += gstDue;
+        const interest = L[f] * (this.isInf[f] ? P.infRate : rt.loan) / 12;
         d[f] -= interest; this.bankEq += interest;
         const wb = n[f] * w[f];
-        const profit = rev[f] - wb - interest - investSpent[f];
+        const profit = rev[f] - wb - interest - investSpent[f] - this.impPaid[f] - gstDue;
         if (L[f] > 0 && d[f] > 1.2 * wb) { const x = Math.min(L[f], d[f] - 1.2 * wb); L[f] -= x; d[f] -= x; }
         if (L[f] === 0 && profit > 0 && d[f] > 1.2 * wb) { const x = Math.min(0.9 * profit, d[f] - 1.2 * wb); d[f] -= x; pool += x; }
         if (d[f] < 0) { L[f] -= d[f]; d[f] = 0; }
@@ -348,7 +428,7 @@
       for (let i = 0; i < H; i++) { m[i] += share; inc[i] += share; }
 
       // 10. accounting check: every rupee is someone's asset and someone's liability
-      let money = this.gov + this.bankEq, loans = 0;
+      let money = this.gov + this.bankEq + this.row, loans = 0;
       for (let i = 0; i < H; i++) money += m[i];
       for (let f = 0; f < F; f++) { money += d[f]; loans += L[f]; }
       const residual = money - loans;
@@ -370,7 +450,16 @@
       this.piAd += P.expLearn * (infl - this.piAd);
       this.piE = P.anchor * P.target + (1 - P.anchor) * this.piAd;
       this.uLast = u;
-      const gdp = consumption + I + gSpent;
+      const gdp = consumption + I + gSpent + X - M;
+      // the rupee drifts towards a value set by relative prices, interest rates and the trade balance
+      this.tbS = 0.9 * this.tbS + 0.1 * (M - X) / gdp;
+      // rupees that have flowed abroad and not come back, as a share of a year's GDP (net foreign debt)
+      this.nfd = this.row / (12 * gdp);
+      const erPrev = this.hist.length >= 12 ? prev.er : 1;
+      const r5 = R(5), noise = (r5() + r5() + r5() + r5() - 2) * Math.sqrt(3);
+      const lnT = Math.log(cpi / this.pw) - P.erRate * (this.repo - this.rStar) + P.erTrade * this.nfd;
+      const erNow = this.er;
+      this.er = Math.exp(Math.log(this.er) + P.erAdj * (lnT - Math.log(this.er)) + P.erNoise * noise);
       const deficit = gSpent + transfers - taxes;
       const wage = employed ? wages / employed : 0;
       const rec = {
@@ -378,10 +467,12 @@
         cpi, pfi: this.pf / this.p0, pni: this.pn / this.p0,
         infl, foodInfl, coreInfl, u, Y, C: consumption, I, G: gSpent, gdp, piE: this.piE, aInc, iFactor,
         wage, realWage: (wage / P.wage0) / cpi, deficit, defRatio: deficit / gdp, debtRatio: -this.gov / (12 * gdp),
-        gini: gini(m), residual, loans, money: money - this.gov - this.bankEq,
+        gini: gini(m), residual, loans, money: money - this.gov - this.bankEq - this.row,
+        er: erNow / this.erBase, erChg: erNow / erPrev - 1, X, M, tradeBal: (X - M) / gdp, infShare: employed ? infEmployed / employed : 0,
       };
       this.hist.push(rec);
       this.t++;
+      if (this.t === 0) { this.erBase = rec.er; for (const h of this.hist) h.er /= this.erBase; }
       return rec;
     }
 
@@ -392,6 +483,7 @@
       const buf = new Float64Array(1), u32 = new Uint32Array(buf.buffer);
       const eat = x => { buf[0] = x; h = Math.imul(h ^ u32[0], 16777619) >>> 0; h = Math.imul(h ^ u32[1], 16777619) >>> 0; };
       for (let f = 0; f < this.F; f++) { eat(this.p[f]); eat(this.w[f]); eat(this.d[f]); eat(this.L[f]); }
+      eat(this.er);
       for (let i = 0; i < this.H; i++) { eat(this.m[i]); eat(this.emp[i]); }
       return h.toString(16).padStart(8, '0');
     }
@@ -400,7 +492,7 @@
   // ---------- scenarios ----------
   const SHOCKS = {
     monsoon: { type: 'harvest', sector: 'food', months: 9, recover: 12, depth: 0.06, label: 'Monsoon fails' },
-    oil: { type: 'oil', sector: 'all', months: 10, recover: 12, depth: 0.035, label: 'Oil price spike' },
+    oil: { type: 'oil', sector: 'all', months: 10, recover: 12, depth: 0.5, label: 'Oil price spike' },
     slowdown: { type: 'confidence', months: 12, recover: 12, depth: 0.035, label: 'Global slowdown' },
   };
   const shockAt = (key, start) => Object.assign({}, SHOCKS[key], { key, start });
@@ -516,7 +608,7 @@
   // ---------- Experiment Lab: one run of a user-defined experiment ----------
   // cfg = { params: {...model settings}, seed, months, policy: { mode: 'rule'|'fixed', repo, tax, spend },
   //         shocks: [{ key: 'monsoon'|'oil'|'slowdown', start, depth?, months? }] }
-  const LAB_FIELDS = ['infl', 'foodInfl', 'coreInfl', 'u', 'repo', 'Y', 'realWage', 'defRatio', 'debtRatio', 'gini'];
+  const LAB_FIELDS = ['infl', 'foodInfl', 'coreInfl', 'u', 'repo', 'Y', 'realWage', 'defRatio', 'debtRatio', 'gini', 'er', 'tradeBal', 'infShare'];
   function runLab(cfg) {
     const shocks = (cfg.shocks || []).map(x => Object.assign({}, SHOCKS[x.key], { key: x.key }, x));
     const sim = new Sim(Object.assign({}, cfg.params || {}, { seed: cfg.seed, shocks }));
@@ -530,7 +622,7 @@
     if (pol.spendDelta != null) sim.govShare = clamp(sim.govShare + pol.spendDelta, 0, 0.3);
     // Y is an index (100 = output at the end of the warm-up); spending flows are % of that month's GDP.
     const last = sim.hist[sim.hist.length - 1], base = last.Y, baseGdp = last.gdp;
-    const flows = { gdp: 1, C: 1, I: 1, G: 1 };
+    const flows = { gdp: 1, C: 1, I: 1, G: 1, X: 1, M: 1 };
     const fields = cfg.fields || LAB_FIELDS;
     const out = { startRepo: sim.repo };
     for (const k of fields) out[k] = new Float32Array(cfg.months);
@@ -545,5 +637,6 @@
   }
 
 
-  return { Sim, Game, SCENARIOS, SHOCKS, MONSOON, DEFAULTS, taylorRule, mulberry32, gini, runLab, LAB_FIELDS };
+  const RUPEE_START = 83; // ₹ per US dollar at the start of every game (the model tracks an index from 1)
+  return { Sim, Game, SCENARIOS, SHOCKS, MONSOON, DEFAULTS, taylorRule, mulberry32, gini, runLab, LAB_FIELDS, RUPEE_START };
 });
