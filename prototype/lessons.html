@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Economy Lab Lessons</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+  main.wrap { display: grid; grid-template-columns: 290px minmax(0, 1fr); gap: 16px; align-items: start; }
+  aside { position: sticky; top: 12px; }
+  .who label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+  .who input { width: 100%; }
+  .list { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+  .list button { width: 100%; text-align: left; display: grid; grid-template-columns: 28px 1fr auto; gap: 8px; align-items: center; background: var(--chip); border-color: transparent; padding: 8px 10px; }
+  .list button[aria-current="true"] { background: var(--card); border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+  .list .n { font: 600 16px/1 var(--serif); color: var(--accent); text-align: center; }
+  .list .t { font-size: 13.5px; font-weight: 600; color: var(--ink); line-height: 1.25; }
+  .list .s { font-size: 12px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .list .s.done { color: var(--good); font-weight: 600; }
+  .teacherlink { margin-top: 12px; width: 100%; }
+  .lesson { display: flex; flex-direction: column; gap: 16px; max-width: 980px; min-width: 0; }
+  .eyebrow { font-size: 12px; letter-spacing: .8px; text-transform: uppercase; color: var(--accent); font-weight: 600; }
+  .lesson h2.big { font: 600 28px/1.2 var(--serif); margin: 4px 0 6px; }
+  .meta { font-size: 13px; color: var(--muted); }
+  .idea p { max-width: 68ch; margin-bottom: 8px; color: var(--body); }
+  .idea p:last-child { margin-bottom: 0; }
+  .step { display: flex; align-items: baseline; gap: 10px; }
+  .step .num { flex: none; width: 26px; height: 26px; border-radius: 50%; background: var(--ink); color: var(--paper); display: inline-grid; place-items: center; font: 600 13px/1 var(--sans); }
+  .step[data-state="locked"] { opacity: .5; }
+  fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+  legend.q { font-weight: 600; color: var(--ink); margin-bottom: 6px; padding: 0; }
+  .opts { display: flex; flex-direction: column; gap: 6px; }
+  .opts label { display: flex; gap: 10px; align-items: flex-start; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; background: var(--card); }
+  .opts label:has(input:checked) { border-color: var(--accent); background: var(--news); }
+  .opts input { margin-top: 3px; }
+  .setup { margin: 0 0 10px; padding-left: 20px; }
+  .setup li { margin-bottom: 3px; }
+  .runrow { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .bar { flex: 1; min-width: 140px; height: 6px; background: var(--paper2); border-radius: 3px; overflow: hidden; }
+  .bar > div { height: 100%; width: 0; background: var(--accent); transition: width .15s; }
+  .charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; margin-top: 12px; }
+  .chart h3 { margin-bottom: 4px; }
+  .tbl { overflow-x: auto; margin-top: 12px; }
+  table { border-collapse: collapse; font-size: 13.5px; font-variant-numeric: tabular-nums; min-width: 100%; }
+  caption { text-align: left; font-size: 13px; color: var(--muted); padding-bottom: 6px; }
+  td, th { padding: 6px 10px; text-align: right; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  td:first-child, th:first-child { text-align: left; }
+  th { font-weight: 600; color: var(--muted); }
+  .scroll { max-height: 260px; overflow-y: auto; }
+  .predicted { margin-top: 12px; padding: 8px 12px; border-left: 3px solid var(--auto); background: var(--chip); border-radius: 0 8px 8px 0; font-size: 14px; }
+  .qs { display: flex; flex-direction: column; gap: 18px; }
+  .numrow { display: flex; gap: 8px; align-items: center; }
+  .numrow input { width: 130px; }
+  .fb { margin-top: 6px; font-size: 13.5px; padding: 6px 10px; border-radius: 6px; background: var(--chip); }
+  .fb b.ok { color: var(--good); } .fb b.no { color: var(--bad); }
+  .result { display: grid; grid-template-columns: auto 1fr; gap: 6px 20px; align-items: center; }
+  .result .big { font: 600 48px/1 var(--serif); color: var(--accent); font-variant-numeric: tabular-nums; }
+  .code { font: 13px/1.4 ui-monospace, "SF Mono", Menlo, Consolas, monospace; background: var(--paper2); color: var(--ink); padding: 8px 10px; border-radius: 6px; word-break: break-all; user-select: all; }
+  .take { border-left: 3px solid var(--accent); padding: 8px 12px; background: var(--news); border-radius: 0 8px 8px 0; }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  textarea { width: 100%; min-height: 140px; font: 13px/1.4 ui-monospace, Menlo, Consolas, monospace; border: 1px solid var(--line); border-radius: 6px; background: var(--card); color: var(--ink); padding: 8px; }
+  .bad { color: var(--bad); } .good { color: var(--good); }
+  @media (max-width: 860px) { main.wrap { grid-template-columns: 1fr; } aside { position: static; } header.top .tag { margin-left: 0; } }
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>Economy Lab</h1>
+  <nav aria-label="Pages"><a href="index.html">Play a scenario</a><a href="lessons.html" aria-current="page">Lessons</a><a href="lab.html">Experiment Lab</a></nav>
+  <span class="tag">Working prototype</span>
+</header>
+
+<main class="wrap">
+  <aside class="card">
+    <div class="who">
+      <label for="name">Your name</label>
+      <input id="name" type="text" autocomplete="name" placeholder="e.g. Priya Sharma" maxlength="60">
+      <p class="small" style="margin-top:6px">Your name goes on your completion codes. It also gives you your own economy, so your numbers differ from your classmates’.</p>
+    </div>
+    <h3 style="margin-top:14px">Lessons</h3>
+    <ol class="list" id="list"></ol>
+    <button class="teacherlink" id="teacherBtn">Teacher view</button>
+  </aside>
+
+  <section class="lesson" id="main" aria-live="polite"></section>
+</main>
+<p class="disclaimer">A teaching prototype by Dr Sulaxan. The economy is simulated and hand-tuned to India-like levels; it is not a forecast.</p>
+
+<script src="engine.js"></script>
+<script src="charts.js"></script>
+<script src="lessons-data.js"></script>
+<script>
+(function () {
+  'use strict';
+  const { LESSONS, grade } = window.EconLessons;
+  const C = window.EconCharts;
+  const $ = s => document.querySelector(s);
+  const el = (tag, attrs, ...kids) => {
+    const e = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs || {})) {
+      if (k === 'html') e.innerHTML = v; else if (k.startsWith('on')) e.addEventListener(k.slice(2), v);
+      else if (v !== false && v != null) e.setAttribute(k, v === true ? '' : v);
+    }
+    for (const k of kids.flat()) if (k != null) e.append(k.nodeType ? k : document.createTextNode(k));
+    return e;
+  };
+
+  // ---- per-viewer progress (best effort) ----
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem('econlab.' + k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem('econlab.' + k, JSON.stringify(v)); } catch (e) { /* storage unavailable */ } },
+  };
+  let progress = store.get('progress', {});
+  const nameInput = $('#name');
+  nameInput.value = store.get('name', '');
+  nameInput.addEventListener('input', () => store.set('name', nameInput.value.trim()));
+  const studentName = () => nameInput.value.trim() || 'Guest';
+
+  // ---- seeds and completion codes ----
+  function fnv(str) { let h = 0x811c9dc5; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 0x01000193); } return h >>> 0; }
+  const seedFor = (name, id, attempt) => 1 + fnv(name.toLowerCase() + '|' + id + '|' + attempt) % 9973;
+  const b64 = s => btoa(String.fromCharCode(...new TextEncoder().encode(s))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  const unb64 = s => new TextDecoder().decode(Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0)));
+  const SALT = 'economy-lab-lessons-v1';
+  function makeCode(rec) { const p = b64(JSON.stringify(rec)); return 'EL1-' + p + '-' + fnv(SALT + p).toString(36); }
+  function readCode(code) {
+    const m = /^EL1-([A-Za-z0-9_-]+)-([a-z0-9]+)$/.exec(code.trim());
+    if (!m) return null;
+    try { const rec = JSON.parse(unb64(m[1])); rec.valid = fnv(SALT + m[1]).toString(36) === m[2]; return rec; } catch (e) { return null; }
+  }
+
+  // ---- sidebar ----
+  let current = 0, state = null;
+  function renderList() {
+    const list = $('#list'); list.textContent = '';
+    LESSONS.forEach((L, i) => {
+      const p = progress[L.id];
+      list.append(el('li', {}, el('button', { 'aria-current': state && !state.teacher && i === current ? 'true' : 'false', onclick: () => { location.hash = L.id; } },
+        el('span', { class: 'n' }, String(i + 1)), el('span', { class: 't' }, L.title),
+        el('span', { class: 's' + (p ? ' done' : '') }, p ? `${p.score}/${p.max}` : `${L.minutes} min`))));
+    });
+  }
+
+  // ---- lesson view ----
+  function colors() { return { accent: C.tok('--accent'), food: C.tok('--food'), auto: C.tok('--auto'), hold: C.tok('--hold'), bad: C.tok('--bad'), ink: C.tok('--ink') }; }
+
+  function showLesson(i) {
+    current = i;
+    const L = LESSONS[i];
+    const attempt = (progress[L.id] && progress[L.id].attempt + 1) || 1;
+    state = { L, attempt, data: null, predicted: null, checked: false };
+    const main = $('#main'); main.textContent = '';
+    document.title = `${L.title} · Economy Lab Lessons`;
+
+    main.append(el('div', { class: 'card' },
+      el('div', { class: 'eyebrow' }, `Lesson ${i + 1} of ${LESSONS.length} · ${L.topic}`),
+      el('h2', { class: 'big' }, L.title),
+      el('div', { class: 'meta' }, `${L.syllabus} · about ${L.minutes} minutes`)));
+
+    main.append(el('div', { class: 'card idea' }, el('h3', {}, 'The idea'), ...L.idea.map(t => el('p', { html: t }))));
+
+    // 1. predict
+    const pf = el('fieldset', {}, el('legend', { class: 'q' }, L.predict.q),
+      el('div', { class: 'opts' }, L.predict.options.map((o, k) => el('label', {},
+        el('input', { type: 'radio', name: 'predict', value: k, onchange: () => { state.predicted = k; runBtn.disabled = false; runNote.textContent = ''; } }), el('span', {}, o)))));
+    main.append(el('div', { class: 'card' }, el('div', { class: 'step' }, el('span', { class: 'num' }, '1'), el('h2', {}, 'Predict')),
+      el('p', { class: 'small', style: 'margin-bottom:10px' }, 'Make a guess before you run the experiment. It isn’t graded.'), pf));
+
+    // 2. run
+    const runBtn = el('button', { class: 'primary', disabled: true, onclick: () => runExperiment() }, 'Run the experiment');
+    const runNote = el('span', { class: 'small' }, 'Make a prediction first.');
+    const bar = el('div', { class: 'bar', hidden: true }, el('div'));
+    const out = el('div', { id: 'out' });
+    main.append(el('div', { class: 'card' }, el('div', { class: 'step' }, el('span', { class: 'num' }, '2'), el('h2', {}, 'Run the experiment')),
+      el('ul', { class: 'setup' }, L.setup.map(s => el('li', {}, s))),
+      el('div', { class: 'runrow' }, runBtn, runNote, bar), out));
+
+    // 3. questions (filled after the run)
+    const qcard = el('div', { class: 'card', id: 'qcard' }, el('div', { class: 'step', 'data-state': 'locked' }, el('span', { class: 'num' }, '3'), el('h2', {}, 'Answer from your results')),
+      el('p', { class: 'small' }, 'Questions appear after you run the experiment.'));
+    main.append(qcard);
+    main.append(el('div', { id: 'resultSlot' }));
+
+    async function runExperiment() {
+      runBtn.disabled = true; bar.hidden = false; runNote.textContent = 'Running…';
+      pf.disabled = true;
+      const seed = seedFor(studentName(), L.id, attempt);
+      const tick = f => new Promise(r => { bar.firstChild.style.width = (100 * f) + '%'; setTimeout(r, 0); });
+      await tick(0);
+      state.data = await L.run(seed, tick);
+      state.seed = seed;
+      runNote.textContent = `Done. Economy number ${seed}.`; bar.hidden = true;
+      drawResults(out);
+      renderQuestions(qcard);
+    }
+    renderList();
+    window.scrollTo(0, 0);
+  }
+
+  function drawResults(out) {
+    const { L, data } = state;
+    out.textContent = '';
+    const charts = el('div', { class: 'charts' });
+    const specs = L.charts(data, colors());
+    const canv = specs.map(s => {
+      const c = el('canvas', { role: 'img', 'aria-label': s.title });
+      charts.append(el('div', { class: 'chart' }, el('h3', {}, s.title), c,
+        el('div', { class: 'legend' }, s.legend.map(([n, col, dash]) => el('span', {}, el('i', { class: dash || '', style: `border-top-color:${col}` }), n)))));
+      return c;
+    });
+    out.append(charts);
+    if (L.table) {
+      const t = L.table(data);
+      const wrap = el('div', { class: 'tbl' + (t.rows.length > 8 ? ' scroll' : '') }, el('table', {}, el('caption', {}, t.caption),
+        el('thead', {}, el('tr', {}, t.head.map(h => el('th', { scope: 'col' }, h)))),
+        el('tbody', {}, t.rows.map(r => el('tr', {}, r.map(v => el('td', {}, v)))))));
+      out.append(wrap);
+    }
+    const act = L.predict.actual(data);
+    out.append(el('p', { class: 'predicted' }, el('b', {}, 'Your prediction: '), L.predict.options[state.predicted] + '. ',
+      el('b', {}, 'What happened: '), L.predict.options[act] + '. ', state.predicted === act ? 'You called it.' : 'Worth thinking about why.'));
+    const redraw = () => { const sp = L.charts(data, colors()); canv.forEach((c, k) => C.line(c, sp[k].opt)); };
+    state.redraw = redraw;
+    requestAnimationFrame(redraw);
+  }
+
+  function renderQuestions(qcard) {
+    const { L } = state;
+    qcard.textContent = '';
+    qcard.append(el('div', { class: 'step' }, el('span', { class: 'num' }, '3'), el('h2', {}, 'Answer from your results')),
+      el('p', { class: 'small', style: 'margin-bottom:12px' }, 'Your economy is unique, so read the numbers from your own charts and tables.'));
+    const qs = el('div', { class: 'qs' });
+    const inputs = L.questions.map((q, k) => {
+      const fb = el('div', { class: 'fb', hidden: true });
+      let get, box;
+      if (q.type === 'mcq') {
+        box = el('fieldset', {}, el('legend', { class: 'q' }, `${k + 1}. ${q.q}`),
+          el('div', { class: 'opts' }, q.options.map((o, j) => el('label', {}, el('input', { type: 'radio', name: 'q' + k, value: j }), el('span', {}, o)))));
+        get = () => { const c = box.querySelector('input:checked'); return c ? +c.value : null; };
+      } else {
+        const id = 'qn' + k;
+        const inp = el('input', { type: 'text', inputmode: 'decimal', id, autocomplete: 'off' });
+        box = el('div', {}, el('label', { class: 'q', for: id, style: 'display:block;font-weight:600;color:var(--ink);margin-bottom:6px' }, `${k + 1}. ${q.q}`),
+          el('div', { class: 'numrow' }, inp, q.unit ? el('span', { class: 'small' }, q.unit) : null));
+        get = () => inp.value.trim();
+      }
+      qs.append(el('div', {}, box, fb));
+      return { q, get, fb, box };
+    });
+    const check = el('button', { class: 'primary', style: 'margin-top:16px', onclick: () => checkAnswers(inputs, check) }, 'Check my answers');
+    qcard.append(qs, check);
+  }
+
+  function fmtAns(q, v) { return q.type === 'mcq' ? q.options[v] : (q.step ? Math.round(v) : v.toFixed(2)) + (q.unit === '%' ? '%' : q.unit && q.unit !== 'month' ? ' ' + q.unit : ''); }
+
+  function checkAnswers(inputs, btn) {
+    const { L, data } = state;
+    const missing = inputs.filter(x => x.get() === null || x.get() === '');
+    if (missing.length) { C.toast(`Answer all ${inputs.length} questions first.`); (missing[0].box.querySelector('input') || missing[0].box).focus(); return; }
+    let score = 0;
+    for (const x of inputs) {
+      const r = grade(x.q, data, x.get());
+      if (r.ok) score++;
+      x.fb.hidden = false; x.fb.textContent = '';
+      x.fb.append(el('b', { class: r.ok ? 'ok' : 'no' }, r.ok ? '✓ Correct. ' : '✗ Not quite. '),
+        x.q.type === 'num' ? `Your economy gives ${fmtAns(x.q, r.ans)}${x.q.rel ? '' : ` (answers within ${x.q.tol} count)`}. ` : (r.ok ? '' : `The answer is: ${fmtAns(x.q, r.ans)}. `),
+        x.q.explain ? x.q.explain(data) : '');
+      x.box.querySelectorAll('input').forEach(i => { i.disabled = true; });
+    }
+    btn.disabled = true; btn.textContent = 'Answers checked';
+    const max = inputs.length;
+    const rec = { n: studentName(), l: L.id, s: score, m: max, a: state.attempt, e: state.seed, d: new Date().toISOString().slice(0, 10) };
+    const code = makeCode(rec);
+    const prev = progress[L.id];
+    const keep = prev && prev.score > score;   // remember the best score and its code
+    progress[L.id] = { score: keep ? prev.score : score, max, attempt: state.attempt, code: keep ? prev.code : code };
+    store.set('progress', progress);
+    renderList();
+
+    const slot = $('#resultSlot'); slot.textContent = '';
+    const next = LESSONS[current + 1];
+    const copyBtn = el('button', { onclick: async () => { C.toast((await C.copyText(code)) ? 'Code copied.' : 'Select the code and copy it.'); } }, 'Copy code');
+    slot.append(el('div', { class: 'card' },
+      el('div', { class: 'step' }, el('span', { class: 'num' }, '4'), el('h2', {}, 'Your result')),
+      el('div', { class: 'result', style: 'margin:8px 0 12px' }, el('div', { class: 'big' }, `${score}/${max}`),
+        el('div', {}, score === max ? 'Full marks.' : score >= Math.ceil(0.7 * max) ? 'Well done. Read the feedback above for any you missed.' : 'Read the feedback above, then try again with a new economy.')),
+      el('p', { class: 'take' }, el('b', {}, 'Key idea: '), L.takeaway),
+      el('h3', { style: 'margin-top:14px' }, 'Completion code for your teacher'),
+      el('p', { class: 'code', id: 'code' }, code),
+      el('p', { class: 'small', style: 'margin:6px 0 12px' }, 'Paste this into your class sheet or send it to your teacher. It records your name, score and date.'),
+      el('div', { class: 'actions' }, copyBtn,
+        el('button', { onclick: () => showLesson(current) }, 'Try again with a new economy'),
+        next ? el('button', { class: 'primary', style: 'padding:8px 14px', onclick: () => { location.hash = next.id; } }, `Next: ${next.title}`) : el('a', { href: 'lab.html', class: 'small' }, 'Go further in the Experiment Lab'))));
+    slot.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  // ---- teacher view ----
+  function showTeacher() {
+    state = { teacher: true };
+    document.title = 'Check codes · Economy Lab Lessons';
+    const main = $('#main'); main.textContent = '';
+    const ta = el('textarea', { id: 'codes', placeholder: 'EL1-…\nEL1-…', 'aria-label': 'Completion codes, one per line' });
+    const out = el('div');
+    const csvBtn = el('button', { disabled: true }, 'Download class results (CSV)');
+    let rows = [];
+    const titles = Object.fromEntries(LESSONS.map((L, i) => [L.id, `${i + 1}. ${L.title}`]));
+    function check() {
+      rows = ta.value.split(/\s+/).filter(Boolean).map(c => ({ c, r: readCode(c) }));
+      out.textContent = '';
+      if (!rows.length) { csvBtn.disabled = true; return; }
+      const bad = rows.filter(x => !x.r || !x.r.valid).length;
+      out.append(el('p', { class: 'small', style: 'margin:10px 0' }, `${rows.length} codes · `, el('span', { class: bad ? 'bad' : 'good' }, bad ? `${bad} not valid` : 'all valid')));
+      out.append(el('div', { class: 'tbl' }, el('table', {},
+        el('thead', {}, el('tr', {}, ['Student', 'Lesson', 'Score', 'Attempt', 'Date', 'Check'].map(h => el('th', { scope: 'col' }, h)))),
+        el('tbody', {}, rows.map(({ c, r }) => r ? el('tr', {}, el('td', {}, r.n), el('td', {}, titles[r.l] || r.l), el('td', {}, `${r.s}/${r.m}`), el('td', {}, String(r.a)), el('td', {}, r.d),
+          el('td', { class: r.valid ? 'good' : 'bad' }, r.valid ? 'Valid' : 'Edited')) : el('tr', {}, el('td', { colspan: 5 }, c.slice(0, 40)), el('td', { class: 'bad' }, 'Not a code')))))));
+      csvBtn.disabled = false;
+    }
+    csvBtn.addEventListener('click', () => {
+      const q = v => `"${String(v).replace(/"/g, '""')}"`;
+      const csv = ['student,lesson,score,max,attempt,date,economy,valid'].concat(rows.filter(x => x.r).map(({ r }) => [q(r.n), r.l, r.s, r.m, r.a, r.d, r.e, r.valid].join(','))).join('\n');
+      C.toast(C.downloadText('class-results.csv', csv) ? 'Downloading class-results.csv' : 'Download blocked here.');
+    });
+    main.append(el('div', { class: 'card' },
+      el('div', { class: 'eyebrow' }, 'For teachers'), el('h2', { class: 'big' }, 'Check completion codes'),
+      el('p', { class: 'idea', style: 'max-width:68ch' }, 'Students get a code when they finish a lesson. Paste the codes below, one per line or separated by spaces, to see each student’s score and download the class results.'),
+      el('p', { class: 'small', style: 'margin:8px 0 12px;max-width:68ch' }, 'A code shows “Edited” if someone changed it by hand. Codes stop casual editing but are not secure, because everything runs in the browser. Nothing is sent to a server.'),
+      ta, el('div', { class: 'actions', style: 'margin-top:10px' }, el('button', { class: 'primary', style: 'padding:8px 14px', onclick: check }, 'Check codes'), csvBtn), out));
+    main.append(el('div', { class: 'card' }, el('h3', {}, 'Using the lessons in class'),
+      el('ul', { class: 'setup', style: 'margin:0' },
+        el('li', {}, 'Each lesson takes 10–15 minutes and fits a BSc or MSc topic. The “Predict” step works well as a class poll before students run the experiment.'),
+        el('li', {}, 'Every student gets their own economy from their name, so numeric answers differ between students and can’t simply be copied.'),
+        el('li', {}, 'Students can retry with a new economy. The code records the attempt number.'))));
+    renderList();
+  }
+
+  function route() {
+    const h = location.hash.slice(1);
+    if (h === 'teacher') return showTeacher();
+    const i = LESSONS.findIndex(L => L.id === h);
+    showLesson(i >= 0 ? i : 0);
+  }
+  $('#teacherBtn').addEventListener('click', () => { location.hash = 'teacher'; });
+  window.addEventListener('hashchange', route);
+  C.onThemeChange(() => state && state.redraw && state.redraw());
+  route();
+})();
+</script>
+</body>
+</html>

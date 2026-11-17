@@ -1,6 +1,6 @@
 # Economy Lab: working prototype
 
-Two pages, no install. Open them in any modern browser, or use the live site:
+Three pages, no install. Open them in any modern browser, or use the live site:
 https://slxnjdhv.github.io/india-economy-simulator/prototype/
 
 ## 1. Play a scenario (`index.html`)
@@ -22,7 +22,27 @@ The game includes:
 - **Copy replay link.** The link reproduces a student's exact game, so a teacher can check it.
 - **Download data (CSV)** of every month, for use in R, Python or Excel.
 
-## 2. Experiment Lab (`lab.html`)
+## 2. Guided lessons (`lessons.html`)
+Six 10–15 minute lessons, each tied to a BSc or MSc syllabus topic:
+
+| # | Lesson | Topic |
+|---|---|---|
+| 1 | Food prices and a failed monsoon | Supply shocks; headline and core inflation |
+| 2 | The inflation and jobs trade-off | Phillips curve; sacrifice ratio |
+| 3 | How a rate hike travels through the economy | Monetary transmission; policy lags |
+| 4 | Why trust in the 4% target matters | Inflation expectations; credibility |
+| 5 | The fiscal multiplier in a slowdown | Multiplier; crowding out |
+| 6 | Luck, noise and why we run many economies | Uncertainty; counterfactuals |
+
+Each lesson follows predict, run, answer:
+- Students **predict** the result first. The prediction isn't graded, but the page shows it next to what happened.
+- They **run** a real experiment on the engine and read the results from charts and tables.
+- They **answer** 3–4 auto-graded questions. Numeric answers are checked against the student's own economy.
+- Each student's name gives them their own economy, so numeric answers differ between classmates and can't simply be copied.
+- Students get a **completion code** with their name, score, attempt and date.
+- On the **Teacher view**, teachers paste the codes to check them and download class results as CSV. Nothing is sent to a server. The codes stop casual editing but are not secure.
+
+## 3. Experiment Lab (`lab.html`)
 Students and economists can design their own experiments:
 - **Economy size:** 100 to 20,000 households and 10 to 2,000 firms.
 - **Run length:** up to 240 months, after a warm-up period.
@@ -40,8 +60,9 @@ You can download a summary CSV or every run as CSV. "Copy settings" saves the ex
 
 ## Files
 - `engine.js`: the agent-based model. Households, firms, a banking sector, the government and the RBI interact every month. The accounts are checked every month, and the same economy number always gives the same run.
-- `charts.js`, `shared.css`: charts and styles used by both pages (light and dark themes).
-- `test.js`: 14 automated checks. Run `node test.js`.
+- `lessons-data.js`: the six lessons, their experiments and grading.
+- `charts.js`, `shared.css`: charts and styles shared by all pages (light and dark themes).
+- `test.js`: 20 automated checks, including that every lesson gives its intended result and grades correctly. Run `node test.js`.
 
 ## Known limits (prototype)
 - Teaching tool, not a forecast. Parameters are hand-tuned to India-like levels, not estimated from RBI, MOSPI or PLFS data.

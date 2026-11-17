@@ -524,15 +524,20 @@
     const pol = cfg.policy || {};
     if (pol.mode === 'fixed') { sim.policyRule = null; if (pol.repo != null) sim.repo = pol.repo; }
     else sim.policyRule = 'auto';
+    if (pol.repoDelta != null) sim.repo = clamp(sim.repo + pol.repoDelta, 0, 0.15);
     if (pol.tax != null) sim.taxRate = pol.tax;
     if (pol.spend != null) sim.govShare = pol.spend;
-    const base = sim.hist[sim.hist.length - 1].Y;
-    const out = {};
-    for (const k of LAB_FIELDS) out[k] = new Float32Array(cfg.months);
+    if (pol.spendDelta != null) sim.govShare = clamp(sim.govShare + pol.spendDelta, 0, 0.3);
+    // Y is an index (100 = output at the end of the warm-up); spending flows are % of that month's GDP.
+    const last = sim.hist[sim.hist.length - 1], base = last.Y, baseGdp = last.gdp;
+    const flows = { gdp: 1, C: 1, I: 1, G: 1 };
+    const fields = cfg.fields || LAB_FIELDS;
+    const out = { startRepo: sim.repo };
+    for (const k of fields) out[k] = new Float32Array(cfg.months);
     let maxRes = 0;
     for (let i = 0; i < cfg.months; i++) {
       const r = sim.step();
-      for (const k of LAB_FIELDS) out[k][i] = k === 'Y' ? 100 * r.Y / base : r[k];
+      for (const k of fields) out[k][i] = k === 'Y' ? 100 * r.Y / base : flows[k] ? 100 * r[k] / baseGdp : r[k];
       maxRes = Math.max(maxRes, Math.abs(r.residual) / Math.max(r.money, 1));
     }
     out.hash = sim.hash(); out.seed = cfg.seed; out.balanced = maxRes < 1e-9;

@@ -68,5 +68,26 @@ big.run(big.P.burnIn + 60);
 const bh = big.hist.slice(-60);
 check(Math.abs(avg(bh, 'infl') - 0.04) < 0.02 && avg(bh, 'u') < 0.12, `10,000-household economy is stable (inflation ${pct(avg(bh, 'infl'))}, unemployment ${pct(avg(bh, 'u'))})`);
 
-console.log(failures ? `\n${failures} check(s) failed` : '\nall checks passed');
-process.exit(failures ? 1 : 0);
+// 6. Guided lessons: every lesson teaches the intended result in several students' economies
+globalThis.EconEngine = require('./engine.js');
+require('./lessons-data.js');
+const { LESSONS, grade } = globalThis.EconLessons;
+const expect = { monsoon: 0, phillips: 0, transmission: 0, anchor: 1, multiplier: null, luck: 1 };
+(async () => {
+  for (const L of LESSONS) {
+    let ok = true, why = '';
+    for (const seed of [17, 404, 2025]) {
+      const d = await L.run(seed, async () => {});
+      const act = L.predict.actual(d);
+      if (expect[L.id] !== null && act !== expect[L.id]) { ok = false; why = `seed ${seed}: outcome ${act}`; }
+      for (const q of L.questions) {
+        const a = q.answer(d);
+        if (q.type === 'num' && !isFinite(a)) { ok = false; why = `seed ${seed}: answer not a number`; }
+        if (!grade(q, d, q.type === 'mcq' ? a : a.toFixed(2)).ok) { ok = false; why = `seed ${seed}: correct answer graded wrong`; }
+      }
+    }
+    check(ok, `lesson "${L.title}" gives the intended result and grades correctly${why ? ' (' + why + ')' : ''}`);
+  }
+  console.log(failures ? `\n${failures} check(s) failed` : '\nall checks passed');
+  process.exit(failures ? 1 : 0);
+})();
