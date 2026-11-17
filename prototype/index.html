@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Economy Lab Prototype</title>
+<style>
+  /* Layout: controls left, four linked charts centre, households and explanation right */
+  :root {
+    --ink: #14213D; --paper: #F7F5EF; --paper2: #ECE8DD; --card: #FFFDF8;
+    --body: #3D4657; --muted: #7A8294; --line: #D6D0C2;
+    --accent: #C8611A; --accent-light: #F2A65A; --food: #4F8A3C; --good: #2E7D4F; --bad: #B23A3A;
+    --header: #14213D; --header-fg: #F7F5EF; --header-sub: #C9D3E3; --news: #FBF1E7;
+    --primary: #14213D; --primary-fg: #FFFFFF; --primary-hover: #23365F;
+    --hold: #9AA1AE; --grid: #E6E1D5; --zero: #B9B2A2; --band: rgba(20,33,61,0.06); --monsoon: rgba(79,138,60,0.08);
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+    --ink: #EEF1F6; --paper: #0F141E; --paper2: #1A2130; --card: #151C29;
+    --body: #C3CBD8; --muted: #8D96A8; --line: #2A3344;
+    --accent: #E58440; --accent-light: #F2A65A; --food: #7CBF65; --good: #5CC08A; --bad: #EE7272;
+    --header: #0A0F1A; --header-fg: #F7F5EF; --header-sub: #AEB9CC; --news: #2A1F16;
+    --primary: #E58440; --primary-fg: #10141C; --primary-hover: #F09A5C;
+    --hold: #707A8C; --grid: #232C3C; --zero: #4A5468; --band: rgba(238,241,246,0.06); --monsoon: rgba(124,191,101,0.10);
+    color-scheme: dark; } }
+  :root[data-theme="dark"] {
+    --ink: #EEF1F6; --paper: #0F141E; --paper2: #1A2130; --card: #151C29;
+    --body: #C3CBD8; --muted: #8D96A8; --line: #2A3344;
+    --accent: #E58440; --accent-light: #F2A65A; --food: #7CBF65; --good: #5CC08A; --bad: #EE7272;
+    --header: #0A0F1A; --header-fg: #F7F5EF; --header-sub: #AEB9CC; --news: #2A1F16;
+    --primary: #E58440; --primary-fg: #10141C; --primary-hover: #F09A5C;
+    --hold: #707A8C; --grid: #232C3C; --zero: #4A5468; --band: rgba(238,241,246,0.06); --monsoon: rgba(124,191,101,0.10);
+    color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--body); font: 15px/1.45 "IBM Plex Sans", -apple-system, "Segoe UI", Roboto, Arial, sans-serif; }
+  header { background: var(--header); color: var(--header-fg); padding: 14px max(16px, env(safe-area-inset-right, 0px)) 14px max(16px, env(safe-area-inset-left, 0px)); display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; }
+  header h1 { margin: 0; font: 600 22px/1.2 "Source Serif 4", Georgia, serif; }
+  header .sub { color: var(--header-sub); font-size: 14px; }
+  header .tag { margin-left: auto; font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--accent-light); }
+  main { display: grid; grid-template-columns: 320px minmax(0, 1fr) 300px; gap: 16px; padding-block: 16px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); max-width: 1600px; margin: 0 auto; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+  .col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+  h2 { margin: 0 0 8px; font: 600 17px/1.25 "Source Serif 4", Georgia, serif; color: var(--ink); }
+  h3 { margin: 0 0 6px; font-size: 13px; font-weight: 600; letter-spacing: .5px; text-transform: uppercase; color: var(--muted); }
+  .month { font-size: 13px; color: var(--muted); }
+  .progress { height: 6px; background: var(--paper2); border-radius: 3px; overflow: hidden; margin: 6px 0 2px; }
+  .progress > div { height: 100%; background: var(--accent); width: 0; transition: width .3s; }
+  .news { font-size: 14px; border-left: 3px solid var(--accent); padding: 6px 10px; background: var(--news); border-radius: 0 8px 8px 0; margin-top: 8px; }
+  .news b { color: var(--ink); }
+  .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .tile { background: var(--paper); border-radius: 8px; padding: 8px 10px; }
+  .tile .k { font-size: 12px; color: var(--muted); }
+  .tile .v { font: 600 22px/1.1 "Source Serif 4", Georgia, serif; color: var(--ink); }
+  .tile .d { font-size: 12px; }
+  .up { color: var(--bad); } .down { color: var(--good); } .flat { color: var(--muted); }
+  .repo { display: flex; align-items: center; gap: 10px; margin: 6px 0 10px; }
+  .repo .val { font: 600 34px/1 "Source Serif 4", Georgia, serif; color: var(--ink); min-width: 110px; text-align: center; }
+  button { font: inherit; cursor: pointer; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--ink); padding: 8px 12px; }
+  button:hover:not(:disabled) { border-color: var(--ink); }
+  button:disabled { opacity: .45; cursor: default; }
+  button.step { width: 44px; height: 44px; font-size: 20px; padding: 0; }
+  button.primary { background: var(--primary); color: var(--primary-fg); border-color: var(--primary); width: 100%; padding: 12px; font-weight: 600; }
+  button.primary:hover:not(:disabled) { background: var(--primary-hover); }
+  button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  input[type=range] { width: 100%; accent-color: var(--accent); }
+  .row { display: flex; gap: 8px; align-items: center; }
+  .small { font-size: 13px; color: var(--muted); }
+  .charts { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .chart canvas { width: 100%; height: 230px; display: block; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .legend i { display: inline-block; width: 18px; height: 0; border-top: 2.5px solid; vertical-align: middle; margin-right: 5px; }
+  .legend i.dash { border-top-style: dashed; }
+  #dots { width: 100%; aspect-ratio: 40 / 25; display: block; }
+  .explain ol { margin: 0; padding-left: 20px; }
+  .explain li { margin-bottom: 6px; }
+  .check { font-size: 13px; color: var(--good); }
+  .score { text-align: center; }
+  .score .grade { font: 600 64px/1 "Source Serif 4", Georgia, serif; color: var(--accent); }
+  .disclaimer { font-size: 12px; color: var(--muted); text-align: center; margin: 0; padding: 0 max(16px, env(safe-area-inset-right, 0px)) 20px max(16px, env(safe-area-inset-left, 0px)); }
+  @media (max-width: 1200px) { main { grid-template-columns: 300px minmax(0, 1fr); } .right { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); } }
+  @media (max-width: 760px) { main { grid-template-columns: 1fr; } .charts { grid-template-columns: 1fr; } header .tag { margin-left: 0; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Economy Lab</h1>
+  <span class="sub">You are the RBI Governor: The Failed Monsoon</span>
+  <span class="tag">Working prototype</span>
+</header>
+
+<main>
+  <section class="col">
+    <div class="card">
+      <div class="row" style="justify-content:space-between"><h2 id="phase">Monetary Policy Committee</h2><span class="month" id="month"></span></div>
+      <div class="progress"><div id="bar"></div></div>
+      <div class="news" id="news"></div>
+    </div>
+    <div class="card">
+      <h3>The economy now</h3>
+      <div class="tiles">
+        <div class="tile"><div class="k">CPI inflation</div><div class="v" id="t-infl"></div><div class="d" id="d-infl"></div></div>
+        <div class="tile"><div class="k">Unemployment</div><div class="v" id="t-u"></div><div class="d" id="d-u"></div></div>
+        <div class="tile"><div class="k">Food inflation</div><div class="v" id="t-food"></div><div class="d" id="d-food"></div></div>
+        <div class="tile"><div class="k">Core inflation</div><div class="v" id="t-core"></div><div class="d" id="d-core"></div></div>
+      </div>
+      <p class="small" style="margin:8px 0 0">Target: 4% CPI inflation, within a 2–6% band. Changes shown are against two months ago.</p>
+    </div>
+    <div class="card">
+      <h3>Your decision: repo rate</h3>
+      <div class="repo">
+        <button class="step" id="minus" aria-label="Cut by 0.25">−</button>
+        <div class="val" id="repo"></div>
+        <button class="step" id="plus" aria-label="Raise by 0.25">+</button>
+      </div>
+      <input type="range" id="slider" min="3" max="10" step="0.25" aria-label="Repo rate">
+      <p class="small" id="change" style="margin:6px 0 10px"></p>
+      <button class="primary" id="go">Announce decision · next 2 months</button>
+      <div class="row" style="margin-top:10px; justify-content:space-between">
+        <button id="restart">Restart</button>
+        <span class="small">Economy no. <input id="seed" type="number" value="28" style="width:70px; font:inherit; padding:4px 6px; border:1px solid var(--line); border-radius:6px; background:var(--card); color:var(--ink)"></span>
+      </div>
+    </div>
+  </section>
+
+  <section class="col">
+    <div class="charts">
+      <div class="card chart"><h3>CPI inflation, % year on year</h3><canvas id="c-infl"></canvas>
+        <div class="legend"><span><i style="border-color:var(--ink)"></i>Headline</span><span><i style="border-color:var(--food)"></i>Food</span><span><i style="border-color:var(--accent-light)"></i>Core</span><span><i class="dash" style="border-color:var(--hold)"></i>If repo unchanged</span></div></div>
+      <div class="card chart"><h3>Unemployment, %</h3><canvas id="c-u"></canvas>
+        <div class="legend"><span><i style="border-color:var(--accent)"></i>Your economy</span><span><i class="dash" style="border-color:var(--hold)"></i>If repo unchanged</span></div></div>
+      <div class="card chart"><h3>Repo rate, %</h3><canvas id="c-repo"></canvas>
+        <div class="legend"><span><i style="border-color:var(--ink)"></i>Your decisions</span><span><i class="dash" style="border-color:var(--hold)"></i>Unchanged</span></div></div>
+      <div class="card chart"><h3>Real output, index (month 0 = 100)</h3><canvas id="c-y"></canvas>
+        <div class="legend"><span><i style="border-color:var(--ink)"></i>Your economy</span><span><i class="dash" style="border-color:var(--hold)"></i>If repo unchanged</span></div></div>
+    </div>
+  </section>
+
+  <section class="col right">
+    <div class="card">
+      <h3>1,000 households</h3>
+      <canvas id="dots"></canvas>
+      <div class="legend"><span><i style="border-color:var(--food)"></i>Work in food</span><span><i style="border-color:var(--ink)"></i>Work elsewhere</span><span><i style="border-color:var(--accent)"></i>Unemployed</span></div>
+    </div>
+    <div class="card explain">
+      <h3>Explain why</h3>
+      <div id="explain"></div>
+    </div>
+    <div class="card score" id="scorecard" hidden></div>
+    <div class="card">
+      <h3>Under the hood</h3>
+      <p class="small" style="margin:0" id="hood"></p>
+      <p class="check" id="check" style="margin:6px 0 0"></p>
+    </div>
+  </section>
+</main>
+<p class="disclaimer">A simplified economy of 1,000 households and 100 firms, for teaching. Its numbers are illustrative and are not a forecast of the Indian economy.</p>
+
+<script src="engine.js"></script>
+<script>
+(function () {
+  const E = window.EconEngine;
+  const $ = id => document.getElementById(id);
+  const tok = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  const pct = (x, d = 1) => (100 * x).toFixed(d) + '%';
+  let game, repo, lastRec;
+
+  const NEWS = [
+    { at: 0, html: '<b>Your first meeting.</b> Inflation is close to the 4% target. The IMD forecasts a normal monsoon. Set the repo rate for the next two months.' },
+    { at: 2, html: '<b>Weather alert.</b> Monsoon rains are running well below normal in July. Farmers are worried about the kharif crop.' },
+    { at: 4, html: '<b>Monsoon fails.</b> Rainfall ends 18% below normal. Kharif output falls and vegetable and pulse prices are rising. Food is 46% of the CPI basket.' },
+    { at: 8, html: '<b>Prices spreading?</b> Food inflation is high. Watch core inflation: if wages and other prices follow, the shock becomes persistent.' },
+    { at: 12, html: '<b>Rabi sowing improves.</b> Farm output is expected to recover gradually over the next year.' },
+    { at: 18, html: '<b>Harvest back to normal.</b> Food prices are easing. Is your policy still right for where the economy is heading?' },
+    { at: 22, html: '<b>Last meeting.</b> Your term ends after this decision.' },
+  ];
+
+  function start() {
+    const seed = Math.max(1, Math.floor(Number($('seed').value) || 28));
+    game = new E.Game({ seed });
+    repo = game.startRepo;
+    render();
+  }
+
+  function setRepo(x) { repo = Math.round(Math.min(0.10, Math.max(0.03, x)) * 400) / 400; renderControls(); }
+
+  function gameHist(sim) { return sim.hist.filter(r => r.t >= -12); }
+
+  function render() {
+    const p = game.player, h = p.hist[p.hist.length - 1], prev = p.hist[p.hist.length - 3];
+    lastRec = h;
+    const m = game.month, total = game.scenario.months;
+    $('month').textContent = game.done ? 'Term complete' : `Month ${m} of ${total}`;
+    $('bar').style.width = (100 * m / total) + '%';
+    const news = NEWS.filter(n => n.at <= m).pop();
+    $('news').innerHTML = game.done ? '<b>Your term is over.</b> See your scorecard on the right, then try a different strategy.' : news.html;
+    tile('infl', h.infl, prev.infl); tile('u', h.u, prev.u); tile('food', h.foodInfl, prev.foodInfl); tile('core', h.coreInfl, prev.coreInfl);
+    $('slider').disabled = $('plus').disabled = $('minus').disabled = $('go').disabled = game.done;
+    renderControls();
+    drawCharts();
+    drawDots();
+    explain();
+    score();
+    $('hood').textContent = `Every month: firms set wages and prices, hire and fire; households look for work, spend and save; banks lend; the RBI sets the repo rate. Loan rate now ${pct(p.rates().loan, 2)}. Expected inflation ${pct(h.piE)}.`;
+    $('check').textContent = `✓ Accounts balance: every rupee lent is a rupee deposited (gap ₹${Math.abs(h.residual).toExponential(1)}). Run fingerprint ${p.hash()}.`;
+  }
+
+  function tile(k, v, before) {
+    $('t-' + k).textContent = pct(v);
+    const d = v - before, el = $('d-' + k);
+    el.className = 'd ' + (Math.abs(d) < 0.0005 ? 'flat' : d > 0 ? 'up' : 'down');
+    el.textContent = (Math.abs(d) < 0.0005 ? '→ ' : d > 0 ? '▲ ' : '▼ ') + (d >= 0 ? '+' : '') + (100 * d).toFixed(1) + ' pts';
+  }
+
+  function renderControls() {
+    $('repo').textContent = (100 * repo).toFixed(2) + '%';
+    $('slider').value = (100 * repo).toFixed(2);
+    const cur = game.player.repo, d = Math.round((repo - cur) * 10000);
+    $('change').textContent = game.done ? '' : d === 0 ? `Hold at ${(100 * cur).toFixed(2)}%.` : `${d > 0 ? 'Raise' : 'Cut'} by ${Math.abs(d)} basis points from ${(100 * cur).toFixed(2)}%.`;
+  }
+
+  // ---------- charts ----------
+  function drawChart(id, opt) {
+    const c = $(id), dpr = window.devicePixelRatio || 1, W = c.clientWidth, H = c.clientHeight;
+    c.width = W * dpr; c.height = H * dpr;
+    const g = c.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
+    const L = 40, R = 10, T = 8, B = 24, xMin = -12, xMax = game.scenario.months;
+    let lo = Infinity, hi = -Infinity;
+    for (const s of opt.series) for (const r of s.data) { lo = Math.min(lo, r.y); hi = Math.max(hi, r.y); }
+    if (opt.band) { lo = Math.min(lo, opt.band[0]); hi = Math.max(hi, opt.band[1]); }
+    if (opt.floor !== undefined) lo = Math.min(lo, opt.floor);
+    const pad = Math.max((hi - lo) * 0.12, opt.minSpan || 0.5); lo -= pad; hi += pad;
+    const X = t => L + (W - L - R) * (t - xMin) / (xMax - xMin), Y = v => T + (H - T - B) * (1 - (v - lo) / (hi - lo));
+    // monsoon months
+    g.fillStyle = tok('--monsoon'); g.fillRect(X(3), T, X(12) - X(3), H - T - B);
+    g.fillStyle = tok('--food'); g.font = '11px sans-serif'; g.fillText('monsoon fails', X(3) + 4, T + 12);
+    if (opt.band) { g.fillStyle = tok('--band'); g.fillRect(L, Y(opt.band[1]), W - L - R, Y(opt.band[0]) - Y(opt.band[1])); }
+    // grid
+    const step = niceStep((hi - lo) / 4);
+    g.strokeStyle = tok('--grid'); g.fillStyle = tok('--muted'); g.lineWidth = 1; g.font = '11px sans-serif'; g.textAlign = 'right';
+    for (let v = Math.ceil(lo / step) * step; v <= hi; v += step) {
+      g.beginPath(); g.moveTo(L, Y(v)); g.lineTo(W - R, Y(v)); g.stroke();
+      g.fillText(v.toFixed(step < 1 ? 1 : 0), L - 6, Y(v) + 4);
+    }
+    g.textAlign = 'center';
+    for (let t = -12; t <= xMax; t += 6) g.fillText(t === 0 ? 'start' : (t > 0 ? 'm' + t : t), X(t), H - 6);
+    g.strokeStyle = tok('--zero'); g.setLineDash([2, 3]); g.beginPath(); g.moveTo(X(0), T); g.lineTo(X(0), H - B); g.stroke(); g.setLineDash([]);
+    for (const s of opt.series) {
+      if (!s.data.length) continue;
+      g.strokeStyle = s.color; g.lineWidth = s.width || 2.2; g.setLineDash(s.dash ? [6, 4] : []);
+      g.beginPath();
+      s.data.forEach((r, i) => {
+        const x = X(r.x), y = Y(r.y);
+        if (i === 0) g.moveTo(x, y);
+        else if (s.stepped) { g.lineTo(x, Y(s.data[i - 1].y)); g.lineTo(x, y); }
+        else g.lineTo(x, y);
+      });
+      g.stroke();
+    }
+    g.setLineDash([]);
+  }
+  function niceStep(x) { const p = Math.pow(10, Math.floor(Math.log10(x))); const f = x / p; return (f < 1.5 ? 1 : f < 3 ? 2 : f < 7 ? 5 : 10) * p; }
+
+  function drawCharts() {
+    const P = gameHist(game.player), Hd = game.hold.hist.filter(r => r.t >= 0);
+    const pts = (arr, k, s = 100) => arr.map(r => ({ x: r.t + 1, y: r[k] * s }));
+    const holdLine = k => game.month > 0 && Math.abs(game.player.repo - game.startRepo) + P.filter(r => r.t >= 0).reduce((s, r) => s + Math.abs(r.repo - game.startRepo), 0) > 1e-9 ? pts(Hd, k) : [];
+    drawChart('c-infl', { band: [2, 6], series: [
+      { data: holdLine('infl'), color: tok('--hold'), dash: true },
+      { data: pts(P, 'coreInfl'), color: tok('--accent-light'), width: 1.8 },
+      { data: pts(P, 'foodInfl'), color: tok('--food'), width: 1.8 },
+      { data: pts(P, 'infl'), color: tok('--ink'), width: 2.8 }] });
+    drawChart('c-u', { series: [{ data: holdLine('u'), color: tok('--hold'), dash: true }, { data: pts(P, 'u'), color: tok('--accent'), width: 2.6 }] });
+    const repoPts = pts(P, 'repo');
+    if (!game.done) repoPts.push({ x: game.month + 1, y: 100 * repo });
+    drawChart('c-repo', { minSpan: 1, series: [
+      { data: [{ x: 0, y: 100 * game.startRepo }, { x: game.scenario.months, y: 100 * game.startRepo }], color: tok('--hold'), dash: true },
+      { data: repoPts, color: tok('--ink'), width: 2.6, stepped: true }] });
+    const base = game.player.hist.find(r => r.t === -1).Y;
+    const yIdx = arr => arr.map(r => ({ x: r.t + 1, y: 100 * r.Y / base }));
+    drawChart('c-y', { minSpan: 1, series: [{ data: holdLine('Y').length ? yIdx(Hd) : [], color: tok('--hold'), dash: true }, { data: yIdx(P), color: tok('--ink'), width: 2.4 }] });
+  }
+
+  function drawDots() {
+    const c = $('dots'), dpr = window.devicePixelRatio || 1, W = c.clientWidth, H = c.clientHeight;
+    c.width = W * dpr; c.height = H * dpr;
+    const g = c.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
+    const s = game.player, cols = 40, rows = 25, cw = W / cols, ch = H / rows, r = Math.min(cw, ch) * 0.36;
+    // sort so the picture is stable: by employer type, then by household number
+    for (let i = 0; i < s.H; i++) {
+      const f = s.emp[i];
+      g.fillStyle = f < 0 ? tok('--accent') : s.isFood[f] ? tok('--food') : tok('--ink');
+      const x = (i % cols + 0.5) * cw, y = (Math.floor(i / cols) + 0.5) * ch;
+      g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
+    }
+  }
+
+  // ---------- explain why: compare with the economy where the repo never changed ----------
+  function explain() {
+    const p = game.player.hist[game.player.hist.length - 1];
+    const q = game.hold.hist[game.hold.hist.length - 1];
+    const el = $('explain');
+    if (game.month === 0) { el.innerHTML = '<p class="small" style="margin:0">After each decision, this panel compares your economy with an identical one where the repo rate never changed, and traces the difference step by step.</p>'; return; }
+    const pp = x => (x >= 0 ? '+' : '−') + Math.abs(100 * x).toFixed(1) + ' pts';
+    const pc = x => (x >= 0 ? '+' : '−') + Math.abs(100 * x).toFixed(1) + '%';
+    const dRepo = p.repo - q.repo;
+    let html = '';
+    if (Math.abs(dRepo) < 1e-9 && game.player.hist.filter(r => r.t >= 0).every(r => Math.abs(r.repo - game.startRepo) < 1e-9)) {
+      html = `<p style="margin:0 0 8px">You have kept the repo at ${pct(p.repo, 2)}, so there is nothing to compare yet.</p>`;
+    } else {
+      const items = [];
+      items.push(`Repo ${pct(p.repo, 2)} vs ${pct(q.repo, 2)} unchanged, so banks lend at ${pct(p.loanRate, 2)} instead of ${pct(q.loanRate, 2)}.`);
+      items.push(`Households save more when rates are higher: they now spend ${(100 * p.aInc).toFixed(1)}% of their income vs ${(100 * q.aInc).toFixed(1)}%.`);
+      items.push(`Firms' investment spending is ${pc(p.I / q.I - 1)}, because borrowing costs ${dRepo >= 0 ? 'more' : 'less'}.`);
+      items.push(`Unemployment is ${pp(p.u - q.u)} (${pct(p.u)} vs ${pct(q.u)}). ${p.u > q.u ? 'Fewer vacancies mean slower wage growth.' : 'A tighter job market pushes wages up faster.'}`);
+      items.push(`Core inflation is ${pp(p.coreInfl - q.coreInfl)} and food inflation ${pp(p.foodInfl - q.foodInfl)}, so headline CPI is ${pp(p.infl - q.infl)} (${pct(p.infl)} vs ${pct(q.infl)}).`);
+      html = '<ol>' + items.map(s => `<li>${s}</li>`).join('') + '</ol>';
+    }
+    if (game.month >= 4 && game.month <= 16) html += '<p class="small" style="margin:6px 0 0">Food prices are set by the harvest: interest rates move them only slowly. Rates work mainly through spending, jobs and wages.</p>';
+    el.innerHTML = html;
+  }
+
+  function lossOf(sim) {
+    const h = sim.hist.filter(r => r.t >= 0);
+    const inflGap = h.reduce((s, r) => s + Math.abs(r.infl - 0.04), 0) / h.length;
+    const uAvg = h.reduce((s, r) => s + r.u, 0) / h.length;
+    const inBand = h.filter(r => r.infl >= 0.02 && r.infl <= 0.06).length;
+    return { inflGap, uAvg, inBand, n: h.length };
+  }
+  function score() {
+    const card = $('scorecard');
+    if (!game.done) { card.hidden = true; return; }
+    const s = game.score(), me = lossOf(game.player), hold = lossOf(game.hold);
+    card.hidden = false;
+    card.innerHTML = `<h3>Your scorecard</h3><div class="grade">${s.grade}</div>
+      <p class="small" style="margin:6px 0">Inflation was inside the 2–6% band in <b>${me.inBand} of ${me.n}</b> months (unchanged repo: ${hold.inBand}).<br>
+      Average distance from 4%: <b>${(100 * me.inflGap).toFixed(1)} pts</b> (unchanged: ${(100 * hold.inflGap).toFixed(1)}).<br>
+      Average unemployment: <b>${pct(me.uAvg)}</b> (unchanged: ${pct(hold.uAvg)}).</p>
+      <p class="small" style="margin:0">Discussion: should a central bank respond to a supply shock it cannot fix, or look through it?</p>`;
+  }
+
+  $('plus').onclick = () => setRepo(repo + 0.0025);
+  $('minus').onclick = () => setRepo(repo - 0.0025);
+  $('slider').oninput = e => setRepo(Number(e.target.value) / 100);
+  $('go').onclick = () => { game.meeting(repo); render(); };
+  $('restart').onclick = start;
+  $('seed').onchange = start;
+  const redraw = () => { if (game) { drawCharts(); drawDots(); } };
+  window.addEventListener('resize', redraw);
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', redraw);
+  new MutationObserver(redraw).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+  start();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,377 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Economy Lab Concept Video</title>
+<style>
+  :root { --bg: #0E1628; }
+  html, body { margin: 0; height: 100%; background: var(--bg); }
+  body { display: flex; align-items: center; justify-content: center; }
+  canvas { width: 100vw; max-width: calc(100vh * 16 / 9); aspect-ratio: 16 / 9; display: block; }
+</style>
+</head>
+<body>
+<canvas id="c" width="1920" height="1080"></canvas>
+<script>
+// Concept preview of the Economy Lab product. All numbers on screen are illustrative.
+const W = 1920, H = 1080, DURATION = 64;
+const C = {
+  ink: '#14213D', paper: '#F7F5EF', paper2: '#ECE8DD', card: '#FFFDF8', body: '#3D4657',
+  bodyDark: '#C9D3E3', accent: '#C8611A', accentLight: '#F2A65A', line: '#D6D0C2',
+  blue: '#2F6FB2', blueLight: '#8DB6E2', navy2: '#1E2E52', muted: '#7A8294', green: '#2E8B6A'
+};
+const SERIF = 'Georgia, "Times New Roman", serif';
+const SANS = '"Helvetica Neue", Helvetica, Arial, sans-serif';
+const MONO = 'Menlo, "Courier New", monospace';
+const cv = document.getElementById('c');
+const g = cv.getContext('2d');
+
+// ---------- helpers ----------
+const clamp = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
+const ease = x => { x = clamp(x); return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2; };
+const prog = (t, a, b) => ease((t - a) / (b - a));
+const lerp = (a, b, k) => a + (b - a) * k;
+function sceneAlpha(t, s, e, f = 0.6) { return clamp(Math.min((t - s) / f, (e - t) / f)); }
+function rr(x, y, w, h, r) { g.beginPath(); g.roundRect(x, y, w, h, r); }
+function box(x, y, w, h, r, fill, stroke) { rr(x, y, w, h, r); if (fill) { g.fillStyle = fill; g.fill(); } if (stroke) { g.strokeStyle = stroke; g.lineWidth = 2; g.stroke(); } }
+function txt(s, x, y, size, color, o = {}) {
+  g.font = `${o.weight || 400} ${size}px ${o.font || SANS}`;
+  g.fillStyle = color; g.textAlign = o.align || 'left'; g.textBaseline = o.base || 'alphabetic';
+  g.fillText(s, x, y);
+}
+function wrap(s, x, y, size, color, maxW, lh, o = {}) {
+  g.font = `${o.weight || 400} ${size}px ${o.font || SANS}`;
+  const words = s.split(' '); let line = ''; let yy = y;
+  for (const w of words) {
+    const test = line ? line + ' ' + w : w;
+    if (g.measureText(test).width > maxW && line) { txt(line, x, yy, size, color, o); line = w; yy += lh; }
+    else line = test;
+  }
+  txt(line, x, yy, size, color, o); return yy;
+}
+function withAlpha(a, fn) { if (a <= 0) return; g.save(); g.globalAlpha = a; fn(); g.restore(); }
+function rise(t, at, fn) { const k = prog(t, at, at + 0.6); if (k <= 0) return; g.save(); g.globalAlpha *= k; g.translate(0, (1 - k) * 28); fn(); g.restore(); }
+function chip(s, x, y, color, bg, size = 24) {
+  g.font = `600 ${size}px ${SANS}`; const w = g.measureText(s).width + 32;
+  box(x, y, w, size + 20, (size + 20) / 2, bg); txt(s, x + 16, y + size + 4, size, color, { weight: 600 }); return w;
+}
+function arrow(x1, y1, x2, y2, color, w = 4) {
+  g.strokeStyle = color; g.fillStyle = color; g.lineWidth = w;
+  g.beginPath(); g.moveTo(x1, y1); g.lineTo(x2, y2); g.stroke();
+  const a = Math.atan2(y2 - y1, x2 - x1), L = 18;
+  g.beginPath(); g.moveTo(x2, y2); g.lineTo(x2 - L * Math.cos(a - 0.45), y2 - L * Math.sin(a - 0.45));
+  g.lineTo(x2 - L * Math.cos(a + 0.45), y2 - L * Math.sin(a + 0.45)); g.closePath(); g.fill();
+}
+function rand(i) { const x = Math.sin(i * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); }
+
+// ---------- illustrative scenario data (24 months) ----------
+const MONTHS = 24;
+const series = { infl: [], unemp: [], repo: [], lending: [] };
+for (let m = 0; m <= MONTHS; m++) {
+  const shock = m >= 3 ? 3.4 * (1 - Math.exp(-(m - 3) / 2.2)) : 0;
+  const policy = m >= 6 ? 3.0 * (1 - Math.exp(-(m - 6) / 5.5)) : 0;
+  series.infl.push(5.0 + shock - policy + 0.12 * Math.sin(m * 1.7));
+  series.repo.push(m >= 6 ? (m >= 8 ? 7.0 : 6.75) : 6.5);
+  const u = m >= 7 ? 0.8 * Math.sin(Math.min(Math.PI, (m - 7) / 14 * Math.PI)) : 0;
+  series.unemp.push(7.0 + u + 0.05 * Math.sin(m * 2.3));
+  series.lending.push(100 - (m >= 6 ? 8 * (1 - Math.exp(-(m - 6) / 3)) : 0));
+}
+
+// ---------- persistent label ----------
+function concept(a, dark) {
+  withAlpha(a * 0.9, () => txt('Concept preview · illustrative data', W - 64, H - 40, 22, dark ? C.bodyDark : C.muted, { align: 'right' }));
+}
+
+// ---------- scenes ----------
+function sTitle(t, a) {
+  withAlpha(a, () => {
+    g.fillStyle = C.ink; g.fillRect(0, 0, W, H);
+    // agent dots drifting in background
+    for (let i = 0; i < 160; i++) {
+      const x = (rand(i) * W + t * 18 * (rand(i + 9) - 0.5) * 4 + W) % W, y = rand(i + 3) * H;
+      g.fillStyle = i % 7 === 0 ? C.accentLight : '#2E4170';
+      g.beginPath(); g.arc(x, y, 4 + rand(i + 5) * 5, 0, Math.PI * 2); g.fill();
+    }
+    rise(t, 0.3, () => txt('INTRODUCING', 160, 400, 30, C.accentLight, { weight: 600 }));
+    rise(t, 0.6, () => txt('Economy Lab', 160, 540, 150, C.paper, { font: SERIF, weight: 600 }));
+    rise(t, 1.2, () => txt('An interactive simulator of the Indian economy', 160, 630, 48, C.bodyDark));
+    rise(t, 1.6, () => txt('for teaching and research', 160, 696, 48, C.bodyDark));
+    rise(t, 2.2, () => txt('By Dr Sulaxan', 160, 820, 40, C.accentLight, { weight: 600 }));
+  });
+}
+
+function sProblem(t, a) {
+  withAlpha(a, () => {
+    g.fillStyle = C.paper; g.fillRect(0, 0, W, H);
+    rise(t, 0.2, () => txt('TODAY', 160, 200, 28, C.accent, { weight: 600 }));
+    rise(t, 0.4, () => txt('Macroeconomics is learned from still diagrams', 160, 290, 72, C.ink, { font: SERIF, weight: 600 }));
+    // chalkboard IS-LM sketch
+    rise(t, 0.9, () => {
+      box(160, 380, 760, 520, 20, '#25362B');
+      g.strokeStyle = '#E8E4D8'; g.lineWidth = 4;
+      g.beginPath(); g.moveTo(240, 440); g.lineTo(240, 840); g.lineTo(860, 840); g.stroke();
+      g.beginPath(); g.moveTo(300, 470); g.quadraticCurveTo(520, 640, 820, 800); g.stroke();
+      g.beginPath(); g.moveTo(300, 800); g.quadraticCurveTo(560, 700, 820, 470); g.stroke();
+      txt('IS', 800, 780, 32, '#E8E4D8', { font: SERIF }); txt('LM', 800, 470, 32, '#E8E4D8', { font: SERIF });
+      txt('r', 210, 460, 32, '#E8E4D8', { font: SERIF }); txt('Y', 860, 880, 32, '#E8E4D8', { font: SERIF });
+    });
+    const items = ['No sense of time or delays', 'No link to the R and Python labs', 'No tool built for India: RBI, GST, monsoon'];
+    items.forEach((s, i) => rise(t, 1.6 + i * 0.5, () => {
+      box(1010, 400 + i * 170, 750, 130, 16, C.card, C.line);
+      txt('×', 1050, 482 + i * 170, 48, C.accent, { weight: 600 });
+      txt(s, 1110, 478 + i * 170, 34, C.body);
+    }));
+    rise(t, 4.2, () => txt('What if students could run the economy themselves?', 160, 1000, 44, C.accent, { font: SERIF, weight: 600 }));
+  });
+}
+
+function phoneFrame(x, y, w, h) { box(x, y, w, h, 56, '#0B1222'); box(x + 16, y + 16, w - 32, h - 32, 42, C.paper); }
+
+function sPicker(t, a) {
+  withAlpha(a, () => {
+    g.fillStyle = C.paper2; g.fillRect(0, 0, W, H);
+    rise(t, 0.2, () => txt('PICK A SCENARIO BY SYLLABUS CHAPTER', 160, 170, 28, C.accent, { weight: 600 }));
+    rise(t, 0.4, () => txt('Ready-made scenarios, each with a teacher kit', 160, 250, 64, C.ink, { font: SERIF, weight: 600 }));
+    const cards = [
+      ['You are the RBI Governor', 'Money and Banking · Monetary policy', 'Repo · CRR · SLR'],
+      ['Finance Minister’s Budget', 'Public Finance · Govt budget', 'GST · deficit · spending'],
+      ['Bad monsoon', 'Indian Economy · Agriculture', 'Food inflation · rural jobs'],
+      ['Oil price spike and the rupee', 'Intl economics · BoP', 'Imports · exchange rate']
+    ];
+    const sel = prog(t, 3.6, 4.2);
+    cards.forEach((c, i) => rise(t, 0.9 + i * 0.35, () => {
+      const col = i % 2, row = Math.floor(i / 2);
+      const x = 160 + col * 820, y = 330 + row * 300;
+      const on = i === 0 ? sel : 0;
+      box(x, y, 780, 260, 20, on > 0.5 ? C.ink : C.card, on > 0.5 ? C.ink : C.line);
+      txt(c[0], x + 44, y + 90, 44, on > 0.5 ? C.paper : C.ink, { font: SERIF, weight: 600 });
+      txt(c[1], x + 44, y + 150, 28, on > 0.5 ? C.accentLight : C.accent, { weight: 600 });
+      txt(c[2], x + 44, y + 210, 28, on > 0.5 ? C.bodyDark : C.body);
+      if (i === 0 && sel > 0) {
+        // tap ripple
+        g.strokeStyle = C.accentLight; g.lineWidth = 4; g.globalAlpha *= (1 - sel);
+        g.beginPath(); g.arc(x + 660, y + 130, 30 + sel * 90, 0, Math.PI * 2); g.stroke();
+      }
+    }));
+    rise(t, 1.8, () => {
+      let x = 160; const y = 960;
+      ['English', 'हिन्दी', 'Works on low-cost phones', 'Runs in the browser'].forEach(s => { x += chip(s, x, y, C.ink, C.card, 26) + 16; });
+    });
+  });
+}
+
+function lineChart(x, y, w, h, data, upto, vmin, vmax, color, label, unit, opts = {}) {
+  box(x, y, w, h, 16, C.card, C.line);
+  txt(label, x + 28, y + 50, 28, C.ink, { weight: 600 });
+  const px = x + 70, py = y + 80, pw = w - 110, ph = h - 140;
+  g.strokeStyle = C.line; g.lineWidth = 1.5;
+  for (let k = 0; k <= 4; k++) {
+    const yy = py + ph * k / 4; g.beginPath(); g.moveTo(px, yy); g.lineTo(px + pw, yy); g.stroke();
+    txt((vmax - (vmax - vmin) * k / 4).toFixed(1), px - 12, yy + 8, 22, C.muted, { align: 'right' });
+  }
+  txt('Month', px + pw, py + ph + 40, 22, C.muted, { align: 'right' });
+  if (opts.target) {
+    const ty = py + ph * (vmax - opts.target) / (vmax - vmin);
+    g.setLineDash([10, 8]); g.strokeStyle = C.green; g.lineWidth = 2;
+    g.beginPath(); g.moveTo(px, ty); g.lineTo(px + pw, ty); g.stroke(); g.setLineDash([]);
+    txt('Target 4%', px + pw - 8, ty - 10, 22, C.green, { align: 'right', weight: 600 });
+  }
+  const n = Math.floor(upto), frac = upto - n;
+  g.strokeStyle = color; g.lineWidth = 5; g.beginPath();
+  let lx = px, ly = py;
+  for (let m = 0; m <= Math.min(n + 1, MONTHS); m++) {
+    let v = data[m];
+    if (m === n + 1) v = lerp(data[n], data[m], frac);
+    const xx = px + pw * (Math.min(m, upto) / MONTHS), yy = py + ph * (vmax - v) / (vmax - vmin);
+    if (m === 0) g.moveTo(xx, yy); else g.lineTo(xx, yy); lx = xx; ly = yy;
+  }
+  g.stroke();
+  g.fillStyle = color; g.beginPath(); g.arc(lx, ly, 9, 0, Math.PI * 2); g.fill();
+  const cur = n < MONTHS ? lerp(data[n], data[Math.min(n + 1, MONTHS)], frac) : data[MONTHS];
+  txt(cur.toFixed(1) + unit, x + w - 28, y + 52, 34, color, { align: 'right', weight: 700 });
+}
+
+function sPlay(t, a) {
+  withAlpha(a, () => {
+    g.fillStyle = C.paper; g.fillRect(0, 0, W, H);
+    // header bar
+    box(0, 0, W, 110, 0, C.ink);
+    txt('You are the RBI Governor', 64, 72, 44, C.paper, { font: SERIF, weight: 600 });
+    const month = clamp((t - 1.0) / 11.5) * MONTHS;
+    txt(`Month ${Math.floor(month)} of 24`, W - 64, 70, 32, C.bodyDark, { align: 'right' });
+    // shock banner
+    const shockK = prog(t, 2.2, 2.8) * (1 - prog(t, 7.5, 8.2));
+    withAlpha(shockK, () => {
+      box(640, 130, 1216, 70, 35, C.accent);
+      txt('Shock: the monsoon fails. Food prices rise 15%', 676, 177, 32, '#FFF6EC', { weight: 600 });
+    });
+    // left control panel
+    box(64, 230, 520, 790, 20, C.card, C.line);
+    txt('Your policy', 104, 300, 36, C.ink, { font: SERIF, weight: 600 });
+    const repo = series.repo[Math.min(MONTHS, Math.floor(month))];
+    const knob = (repo - 5.5) / 2.5;
+    [['Repo rate', repo.toFixed(2) + '%', knob, true], ['CRR', '4.00%', 0.4, false], ['SLR', '18.00%', 0.55, false]].forEach((r, i) => {
+      const y = 380 + i * 150;
+      txt(r[0], 104, y, 30, C.body, { weight: 600 }); txt(r[1], 544, y, 30, r[3] ? C.accent : C.ink, { align: 'right', weight: 700 });
+      box(104, y + 30, 440, 12, 6, C.paper2);
+      box(104, y + 30, 440 * r[2], 12, 6, r[3] ? C.accent : C.blueLight);
+      g.fillStyle = C.ink; g.beginPath(); g.arc(104 + 440 * r[2], y + 36, 18, 0, Math.PI * 2); g.fill();
+    });
+    // MPC decision toast
+    const toast = prog(t, 4.4, 4.9) * (1 - prog(t, 8.6, 9.2));
+    withAlpha(toast, () => { box(104, 830, 440, 150, 16, C.ink); wrap('MPC meeting: you raise the repo rate to 7.00%', 132, 890, 28, C.paper, 390, 38, { weight: 600 }); });
+    // charts
+    lineChart(624, 230, 600, 390, series.infl, month, 3, 10, C.accent, 'CPI inflation', '%', { target: 4 });
+    lineChart(1256, 230, 600, 390, series.unemp, month, 6, 9, C.blue, 'Unemployment', '%');
+    // households grid
+    box(624, 650, 1232, 370, 16, C.card, C.line);
+    txt('1,000 households · 100 firms · 10 banks', 664, 704, 28, C.ink, { weight: 600 });
+    const u = month > 0 ? series.unemp[Math.min(MONTHS, Math.floor(month))] : 7;
+    const share = clamp((u - 6.6) / 2.2);
+    for (let i = 0; i < 40 * 7; i++) {
+      const cx = 680 + (i % 40) * 29, cy = 760 + Math.floor(i / 40) * 34;
+      const jobless = rand(i + 77) < 0.05 + share * 0.25;
+      g.fillStyle = jobless ? C.accentLight : C.blue;
+      g.beginPath(); g.arc(cx, cy, 10, 0, Math.PI * 2); g.fill();
+    }
+    g.fillStyle = C.blue; g.beginPath(); g.arc(1480, 698, 10, 0, Math.PI * 2); g.fill(); txt('Employed', 1500, 706, 24, C.body);
+    g.fillStyle = C.accentLight; g.beginPath(); g.arc(1660, 698, 10, 0, Math.PI * 2); g.fill(); txt('Jobless', 1680, 706, 24, C.body);
+  });
+}
+
+function sTextbook(t, a) {
+  withAlpha(a, () => {
+    g.fillStyle = C.paper2; g.fillRect(0, 0, W, H);
+    rise(t, 0.2, () => txt('TEXTBOOK MODE', 160, 170, 28, C.accent, { weight: 600 }));
+    rise(t, 0.4, () => txt('The exam diagram, next to the real economy', 160, 250, 64, C.ink, { font: SERIF, weight: 600 }));
+    const k = prog(t, 1.4, 3.0);
+    // left: IS-LM
+    rise(t, 0.8, () => {
+      box(160, 320, 780, 640, 20, C.card, C.line);
+      txt('IS-LM: rate rise shifts LM left', 200, 380, 30, C.ink, { weight: 600 });
+      const ox = 240, oy = 900;
+      g.strokeStyle = C.body; g.lineWidth = 3; g.beginPath(); g.moveTo(ox, 420); g.lineTo(ox, oy); g.lineTo(880, oy); g.stroke();
+      txt('r', ox - 30, 440, 30, C.body, { font: SERIF }); txt('Y', 880, oy + 40, 30, C.body, { font: SERIF });
+      g.strokeStyle = C.blue; g.lineWidth = 5; g.beginPath(); g.moveTo(300, 460); g.quadraticCurveTo(520, 660, 840, 860); g.stroke();
+      txt('IS', 845, 850, 28, C.blue, { weight: 700 });
+      g.strokeStyle = '#B8B2A4'; g.lineWidth = 4; g.setLineDash([10, 8]);
+      g.beginPath(); g.moveTo(320, 860); g.quadraticCurveTo(580, 760, 840, 470); g.stroke(); g.setLineDash([]);
+      const s = -110 * k;
+      g.strokeStyle = C.accent; g.lineWidth = 5; g.beginPath(); g.moveTo(320 + s, 860); g.quadraticCurveTo(580 + s, 760, 840 + s, 470); g.stroke();
+      txt('LM', 845 + s, 470, 28, C.accent, { weight: 700 });
+      txt('Instant: higher r, lower Y', 200, 945, 26, C.muted);
+    });
+    // right: ABM path
+    rise(t, 1.1, () => {
+      box(980, 320, 780, 640, 20, C.card, C.line);
+      txt('Simulated economy: the same rate rise', 1020, 380, 30, C.ink, { weight: 600 });
+      const px = 1060, py = 440, pw = 640, ph = 380;
+      g.strokeStyle = C.line; g.lineWidth = 1.5; for (let i = 0; i <= 4; i++) { g.beginPath(); g.moveTo(px, py + ph * i / 4); g.lineTo(px + pw, py + ph * i / 4); g.stroke(); }
+      g.strokeStyle = C.blue; g.lineWidth = 5; g.beginPath();
+      const upto = k * 24;
+      for (let m = 0; m <= upto; m++) { const y = m < 4 ? 0 : -(1 - Math.exp(-(m - 4) / 5)) * 2.6 + (m > 14 ? (m - 14) * 0.08 : 0); const xx = px + pw * m / 24, yy = py + ph * 0.3 - y * 70; if (m === 0) g.moveTo(xx, yy); else g.lineTo(xx, yy); }
+      g.stroke();
+      txt('Output', px + pw, py - 12, 24, C.blue, { align: 'right', weight: 600 });
+      withAlpha(prog(t, 3.0, 3.5), () => {
+        arrow(px + 40, py + ph + 40, px + pw * 4 / 24, py + ph * 0.3 + 30, C.accent, 3);
+        txt('4-month lag', px + 40, py + ph + 70, 26, C.accent, { weight: 600 });
+        txt('Small firms and borrowers hit first', 1020, 945, 26, C.muted);
+      });
+    });
+  });
+}
+
+function sExplain(t, a) {
+  withAlpha(a, () => {
+    g.fillStyle = C.paper; g.fillRect(0, 0, W, H);
+    rise(t, 0.2, () => txt('EXPLAIN WHY', 160, 170, 28, C.accent, { weight: 600 }));
+    rise(t, 0.4, () => txt('“Why did inflation fall in month 14?”', 160, 250, 64, C.ink, { font: SERIF, weight: 600 }));
+    const steps = [['Repo rate', '+50 bp'], ['Bank lending', '−8%'], ['Firm investment', '−5%'], ['Hiring', '−2%'], ['Inflation', '7.4% → 6.0%']];
+    steps.forEach((s, i) => rise(t, 1.0 + i * 0.6, () => {
+      const x = 160 + i * 330, y = 420;
+      box(x, y, 280, 220, 20, i === 4 ? C.ink : C.card, i === 4 ? C.ink : C.line);
+      wrap(s[0], x + 28, y + 70, 32, i === 4 ? C.paper : C.ink, 230, 40, { weight: 600 });
+      txt(s[1], x + 28, y + 180, 40, i === 4 ? C.accentLight : C.accent, { weight: 700, font: SERIF });
+      if (i < 4) arrow(x + 286, y + 110, x + 324, y + 110, C.accent, 4);
+    }));
+    rise(t, 4.2, () => wrap('Every step is traced from the actual money flows in this run, not a canned answer.', 160, 760, 40, C.body, 1500, 54));
+  });
+}
+
+function sResearch(t, a) {
+  withAlpha(a, () => {
+    g.fillStyle = C.ink; g.fillRect(0, 0, W, H);
+    rise(t, 0.2, () => txt('FOR RESEARCHERS', 160, 170, 28, C.accentLight, { weight: 600 }));
+    rise(t, 0.4, () => txt('The same engine, in Python', 160, 250, 64, C.paper, { font: SERIF, weight: 600 }));
+    const code = ['import econsim', '', 'sim = econsim.load("india/rbi-governor")', 'runs = econsim.sweep(sim,', '    grid={"repo_hike_bp": [0, 25, 50, 75]},', '    seeds=range(100))', '', 'runs.plot("cpi_inflation", by="repo_hike_bp")'];
+    rise(t, 0.8, () => {
+      box(160, 330, 820, 560, 20, '#0B1222');
+      const shown = Math.floor(clamp((t - 1.0) / 2.2) * code.join('\n').length);
+      let c = 0;
+      code.forEach((ln, i) => { const part = ln.slice(0, Math.max(0, shown - c)); c += ln.length + 1; txt(part, 200, 400 + i * 54, 28, i === 0 ? C.accentLight : C.bodyDark, { font: MONO }); });
+    });
+    rise(t, 2.4, () => {
+      box(1020, 330, 740, 560, 20, C.navy2);
+      txt('Inflation across 400 runs', 1060, 390, 28, C.paper, { weight: 600 });
+      const cols = [C.blueLight, '#6E9BD0', C.accentLight, C.accent];
+      const k = prog(t, 2.8, 4.6);
+      for (let s = 0; s < 4; s++) for (let r = 0; r < 14; r++) {
+        g.strokeStyle = cols[s]; g.globalAlpha = 0.35 * a; g.lineWidth = 2; g.beginPath();
+        for (let m = 0; m <= 24 * k; m++) {
+          const shock = m >= 3 ? 3.4 * (1 - Math.exp(-(m - 3) / 2.2)) : 0;
+          const pol = m >= 6 ? (0.8 + s * 0.9) * (1 - Math.exp(-(m - 6) / 5.5)) : 0;
+          const v = 5 + shock - pol + (rand(s * 100 + r * 7 + m) - 0.5) * 0.7;
+          const xx = 1080 + 620 * m / 24, yy = 840 - (v - 2) * 52;
+          if (m === 0) g.moveTo(xx, yy); else g.lineTo(xx, yy);
+        }
+        g.stroke();
+      }
+      g.globalAlpha = a;
+      ['0 bp', '25 bp', '50 bp', '75 bp'].forEach((l, i) => { g.fillStyle = cols[i]; g.fillRect(1060 + i * 170, 860, 24, 6); txt(l, 1094 + i * 170, 870, 22, C.bodyDark); });
+    });
+    rise(t, 4.4, () => {
+      let x = 160; ['Calibrated to RBI and MOSPI data', 'Reproducible runs', 'Open source'].forEach(s => { x += chip(s, x, 960, C.ink, C.accentLight, 26) + 16; });
+    });
+  });
+}
+
+function sClose(t, a) {
+  withAlpha(a, () => {
+    g.fillStyle = C.accent; g.fillRect(0, 0, W, H);
+    rise(t, 0.2, () => txt('ECONOMY LAB', 160, 330, 30, '#FFE2C4', { weight: 600 }));
+    rise(t, 0.5, () => txt('Let students run the economy.', 160, 470, 96, '#FFF6EC', { font: SERIF, weight: 600 }));
+    rise(t, 1.0, () => txt('Students · Teachers · Researchers · Policy analysts', 160, 570, 44, '#FFF0E0'));
+    rise(t, 1.6, () => txt('Pilot it with us this academic year', 160, 760, 48, C.ink, { weight: 600 }));
+    rise(t, 2.0, () => txt('Dr Sulaxan', 160, 830, 40, C.ink, { weight: 600 }));
+  });
+}
+
+const SCENES = [
+  [0, 6.5, sTitle, true], [6, 13, sProblem, false], [12.5, 19.5, sPicker, false],
+  [19, 33, sPlay, false], [32.5, 40, sTextbook, false], [39.5, 46.5, sExplain, false],
+  [46, 54.5, sResearch, true], [54, 64, sClose, false]
+];
+
+function render(t) {
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  g.globalAlpha = 1; g.fillStyle = C.ink; g.fillRect(0, 0, W, H);
+  let dark = true;
+  for (const [s, e, fn, isDark] of SCENES) {
+    if (t < s || t > e) continue;
+    const a = s === 0 ? clamp((e - t) / 0.6) : (e === DURATION ? clamp((t - s) / 0.6) : sceneAlpha(t, s, e));
+    fn(t - s, a); if (a > 0.5) dark = isDark;
+  }
+  if (t < DURATION - 4) concept(1, dark);
+}
+window.renderAt = render;
+window.DURATION = DURATION;
+
+if (!new URLSearchParams(location.search).has('capture')) {
+  let start = null;
+  function loop(ts) { if (start === null) start = ts; const t = ((ts - start) / 1000) % DURATION; render(t); requestAnimationFrame(loop); }
+  requestAnimationFrame(loop);
+} else { render(0); }
+</script>
+</body>
+</html>

@@ -1,0 +1,114 @@
+% Concept note: Interactive Economy Simulator for Economics Education and Research
+% Compile with:  tectonic concept-note.tex   (or xelatex / pdflatex)
+\documentclass[10pt,a4paper]{article}
+
+% ---------- Edit these ----------
+\newcommand*{\authorname}{Dr Sulaxan}
+\newcommand*{\contactline}{}          % e.g. name@example.com \textperiodcentered{} +91 98xxx xxxxx
+\newcommand*{\institute}{}            % e.g. Department of Economics, XYZ University
+% --------------------------------
+
+\usepackage[a4paper,top=1.1cm,bottom=1.1cm,left=1.5cm,right=1.5cm]{geometry}
+\usepackage{tgpagella}
+\usepackage[T1]{fontenc}
+\usepackage{microtype}
+\usepackage{xcolor}
+\usepackage{tabularx,booktabs}
+\usepackage{enumitem}
+\usepackage{multicol}
+\usepackage{titlesec}
+\usepackage[hidelinks]{hyperref}
+
+\definecolor{ink}{HTML}{14213D}
+\definecolor{accent}{HTML}{C8611A}
+
+\pagestyle{empty}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{2pt}
+\setlength{\multicolsep}{2pt}
+\setlength{\columnsep}{18pt}
+\titleformat{\section}{\fontsize{11.5}{13}\selectfont\bfseries\color{ink}}{}{0pt}{}
+\titlespacing*{\section}{0pt}{5pt}{1pt}
+\setlist{nosep,leftmargin=1.2em,topsep=1pt}
+\renewcommand{\arraystretch}{1.05}
+
+\begin{document}
+\fontsize{9.6}{11.5}\selectfont
+
+{\Large\bfseries\color{ink} Concept Note: Interactive Economy Simulator\\[2pt]
+for Economics Education and Research\par}
+\vspace{4pt}
+{\color{accent}\rule{\linewidth}{1.2pt}}\par
+\vspace{2pt}
+\textbf{\authorname}%
+\ifx\institute\empty\else\ \textperiodcentered\ \institute\fi
+\ifx\contactline\empty\else\ \textperiodcentered\ \contactline\fi
+\hfill 17 November 2026
+\vspace{4pt}
+
+We propose to build and pilot, with the Institute, an interactive simulator of the Indian economy for teaching and research. Students and faculty set policy and watch a living economy respond.
+
+\section{The problem}
+\begin{itemize}
+  \item \textbf{Macroeconomics is taught on static diagrams.} IS-LM, the multiplier, the Phillips curve and Solow are taught as chalkboard models. Students rarely see how an economy actually responds to a policy over time.
+  \item \textbf{Simulation is missing from current syllabi.} In the BSc and MSc Economics syllabi we reviewed, agent-based modelling is not mentioned once, and simulation appears only twice, never in macroeconomics. Yet every programme now has R, Python or Excel labs.
+  \item \textbf{No digital tool fits the Indian context.} Existing simulators are built around the US Federal Reserve or the European Central Bank. In India, teaching relies on role-plays, token games and paper-trading apps that cover stocks, not the economy. None models the RBI's repo rate, CRR and SLR, GST, the informal sector or monsoon-driven food inflation.
+\end{itemize}
+
+\section{Proposed solution}
+A browser-based \textbf{agent-based economy simulator}. Thousands of simulated households, firms and banks, plus a government and the RBI, interact month by month. Inflation, unemployment, inequality and crises emerge from their behaviour rather than from fixed formulas.
+\begin{itemize}
+  \item \textbf{Textbook mode} shows the IS-LM, AD-AS or multiplier result beside what the simulated economy actually does, and explains the gap. It strengthens exam topics instead of replacing them.
+  \item \textbf{India scenarios:} \emph{You are the RBI Governor} (repo, CRR, SLR, OMO), \emph{Finance Minister's Budget} (GST, deficit), \emph{Bad monsoon}, \emph{Oil price spike and the rupee}.
+  \item \textbf{One engine for every user:} a mobile-friendly web app for classrooms, and a Python package for researchers. Results can be reproduced exactly and shared as links.
+\end{itemize}
+
+\section{Who benefits and how it fits the syllabus}
+{\footnotesize
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.31\linewidth}X>{\raggedright\arraybackslash}p{0.11\linewidth}@{}}
+\toprule
+\textbf{Course} & \textbf{How the simulator is used} & \textbf{Users} \\
+\midrule
+Intro and Intermediate Macroeconomics & Multiplier, IS-LM, AD-AS and the Phillips curve shown live next to the textbook model & BSc \\
+Money and Banking & Credit creation; repo, CRR and SLR in the RBI Governor scenario & BSc, MSc \\
+Public Finance & Taxes, spending and the deficit; crowding out & BSc, MSc \\
+Indian Economy & Calibrated shocks: monsoon, oil and the rupee, COVID & BSc, MSc \\
+Advanced Macro and Monetary Economics & Taylor rule; comparing the simulation with DSGE models; expectations & MSc \\
+R and Python labs, Econometrics & Scripted experiments; simulated data where the true effect is known & BSc, MSc \\
+Dissertations and research & A ready platform for policy experiments that others can reproduce & MSc, faculty \\
+\bottomrule
+\end{tabularx}\par}
+
+\section{Key features}
+\begin{multicols}{2}
+\begin{itemize}
+  \item Scenarios labelled by syllabus unit, each with a teacher kit: worksheet, questions and answer guide.
+  \item An ``explain why'' panel that traces each outcome back to the actual flows in the economy.
+  \item Switchable schools of thought (Keynesian, monetarist and others), so students can see how assumptions change conclusions.
+  \item Calibration to RBI and MOSPI data, and checks against real-world patterns such as the Phillips curve and Okun's law.
+  \item Runs on low-cost Android phones; English and Hindi first.
+  \item An open-source engine whose models are documented in the standard ODD format, so faculty can audit and extend it.
+\end{itemize}
+\end{multicols}
+
+\noindent\begin{minipage}[t]{0.485\linewidth}
+\section{What we request from the Institute}
+\begin{itemize}
+  \item \textbf{Faculty advisors:} one or two who teach Macroeconomics or Money and Banking, to review the scenarios and validate the model.
+  \item \textbf{A pilot:} one semester in one or two courses, with a pre-test and post-test on concept understanding.
+  \item \textbf{Data and research:} guidance on Indian calibration data, and a joint working paper or case study from the pilot.
+  \item \textbf{No cost to the Institute during the pilot.} Free access for participating students and faculty, with acknowledgement as a founding academic partner.
+\end{itemize}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.485\linewidth}
+\section{Timeline and expected outcomes}
+\begin{enumerate}
+  \item \textbf{Months 0--3, working demo:} the core economy, the RBI Governor and Budget scenarios, and textbook mode, reviewed with faculty.
+  \item \textbf{Months 4--8, classroom pilot:} one semester in partner courses, with teacher kits and a measured learning outcome.
+  \item \textbf{Months 9--12, research release:} the Python package, calibration to Indian data, and a joint paper or case study.
+\end{enumerate}
+\vspace{2pt}
+\textbf{Outcomes:} better student understanding of macro and monetary topics, a hands-on bridge between theory and the R and Python labs, and a citable India-calibrated research tool. The Institute is recognised as a pioneer in simulation-based economics teaching.
+\end{minipage}
+
+\end{document}
