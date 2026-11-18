@@ -3,3 +3,5 @@
 *.log
 *.out
 node_modules/
+research_notes/
+reports/
