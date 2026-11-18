@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import multiprocessing as mp
 import os
 from concurrent.futures import ProcessPoolExecutor
 from typing import Any, Iterable, Mapping, Optional, Sequence, Union
@@ -115,6 +116,12 @@ def _run_one(kw: dict) -> pd.DataFrame:
     return df
 
 
+def _pool(n: int) -> ProcessPoolExecutor:
+    # "spawn" starts fresh processes. "fork" (the Linux default) would copy the parent's embedded
+    # V8 engine, which is not safe to fork and can hang.
+    return ProcessPoolExecutor(max_workers=n, mp_context=mp.get_context("spawn"))
+
+
 def _workers(n_jobs: Optional[int], tasks: int) -> int:
     if n_jobs is None:
         n_jobs = max(1, (os.cpu_count() or 2) - 1)
@@ -133,7 +140,7 @@ def run_many(seeds: Iterable[int] = range(1, 41), months: int = 36, *, n_jobs: O
     if n == 1:
         parts = [_run_one(t) for t in tasks]
     else:
-        with ProcessPoolExecutor(max_workers=n) as ex:
+        with _pool(n) as ex:
             parts = list(ex.map(_run_one, tasks, chunksize=max(1, len(tasks) // (4 * n))))
     return pd.concat(parts, ignore_index=True)
 
@@ -169,7 +176,7 @@ def sweep(setting: str, values: Sequence[Any], seeds: Iterable[int] = range(1, 4
     if n == 1:
         parts = [_run_one(kw) for _, kw in tasks]
     else:
-        with ProcessPoolExecutor(max_workers=n) as ex:
+        with _pool(n) as ex:
             parts = list(ex.map(_run_one, [kw for _, kw in tasks], chunksize=max(1, len(tasks) // (4 * n))))
     for (v, _), df in zip(tasks, parts):
         df.insert(0, setting, v)
@@ -353,7 +360,7 @@ def moments(params: Optional[Mapping[str, Any]] = None, seeds: Iterable[int] = r
     if n == 1:
         res = [_moment_one(t) for t in tasks]
     else:
-        with ProcessPoolExecutor(max_workers=n) as ex:
+        with _pool(n) as ex:
             res = list(ex.map(_moment_one, tasks))
     sims = pd.DataFrame([r["m"] for r in res])
     t = calibration_targets()
