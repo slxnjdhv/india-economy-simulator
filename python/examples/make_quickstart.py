@@ -11,7 +11,7 @@ md, code = nbf.v4.new_markdown_cell, nbf.v4.new_code_cell
 cells = [
     md("# indiasim quick start\n\nThe Economy Lab model of the Indian economy, run from Python. It runs the same engine as the "
        "[website](https://slxnjdhv.github.io/india-economy-simulator/), calibrated to RBI, MoSPI and PLFS data for 2015–2024.\n\n"
-       "Install: `pip install \"git+https://github.com/slxnjdhv/india-economy-simulator#subdirectory=python\"`"),
+       "Install: `pip install indiasim`"),
     code("import indiasim as isim\nimport matplotlib.pyplot as plt\nimport pandas as pd\n\npd.set_option('display.precision', 3)\nisim.__version__"),
     md("## 1. One economy: a failed monsoon\n\nEach run first warms the economy up for 10 years. The monsoon then fails in month 4, and the RBI follows its usual rule. "
        "Rates are fractions, so 0.04 means 4%."),

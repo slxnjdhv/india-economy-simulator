@@ -12,8 +12,10 @@ The accounts are checked every month.
 ## Install
 
 ```bash
-pip install "git+https://github.com/slxnjdhv/india-economy-simulator#subdirectory=python"
+pip install indiasim
 ```
+
+It's on PyPI at https://pypi.org/project/indiasim/. To get the latest development version from GitHub instead, use `pip install "git+https://github.com/slxnjdhv/india-economy-simulator#subdirectory=python"`.
 
 It needs Python 3.9 or later. Dependencies are installed automatically: `mini-racer` (an embedded V8 JavaScript engine), `numpy` and `pandas`. Node.js is not needed.
 
