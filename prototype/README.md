@@ -73,11 +73,10 @@ You can download a summary CSV or every run as CSV. "Copy settings" saves the ex
 Shows how closely the model matches Indian data for 2015–2024, the settings the calibration chose, and where the model still falls short. The data, sources and calibration program are in [`../calibration/`](../calibration/).
 
 ## Files
-- `engine.js`: the agent-based model. It computes exp, log, pow and cos with its own portable code, so an economy number gives exactly the same run in every browser, in Node.js and in the Python package.
-  The rest of the file: Households, firms, a banking sector, the government and the RBI interact every month. The accounts are checked every month, and the same economy number always gives the same run.
+- `engine.js`: the agent-based model. Households, firms, banks, moneylenders, the government, the RBI and the rest of the world interact every month, and the accounts are checked every month. The engine computes exp, log, pow and cos with its own portable code, so an economy number gives exactly the same run in every browser, in Node.js and in the Python package.
 - `lessons-data.js`: the seven lessons, their experiments and grading.
 - `charts.js`, `shared.css`: charts and styles shared by all pages (light and dark themes).
-- `test.js`: 28 automated checks. They cover the rupee, trade, the informal sector and the calibration, and confirm that every lesson gives its intended result and grades correctly. Run `node test.js`.
+- `test.js`: 29 automated checks. They cover the rupee, trade, the informal sector, the calibration and the Python package's copy of the engine, and confirm that every lesson gives its intended result and grades correctly. Run `node test.js`.
 
 ## Known limits (prototype)
 - Teaching tool, not a forecast. Sixteen settings are calibrated to 2015–2024 Indian data; the rest are hand-tuned. Average inflation sits near the 4% target rather than India's 5%, and the model has no current-account deficit.
