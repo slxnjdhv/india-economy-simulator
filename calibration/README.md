@@ -17,3 +17,5 @@ node build-targets.js && node calibrate.js 700 && node make-report.js
 ```
 
 A full run takes about 10 minutes on a 10-core laptop. Then copy the values in `result.json` → `params` into `DEFAULTS` in `prototype/engine.js`, where they are marked `[cal]`.
+
+After changing the engine or the calibration, run `python ../python/sync_engine.py` so the Python package uses the same files.

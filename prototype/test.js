@@ -107,7 +107,14 @@ check(Math.abs(avg(bh, 'infl') - 0.04) < 0.02 && avg(bh, 'u') < 0.12, `10,000-ho
   }
 }
 
-// 8. Guided lessons: every lesson teaches the intended result in several students' economies
+// 8. The Python package carries an exact copy of this engine
+{
+  const fs = require('fs'), path = require('path');
+  const py = path.join(__dirname, '..', 'python', 'src', 'indiasim', 'data', 'engine.js');
+  if (fs.existsSync(py)) check(fs.readFileSync(py, 'utf8') === fs.readFileSync(path.join(__dirname, 'engine.js'), 'utf8'), 'Python package engine is in sync (run python/sync_engine.py if not)');
+}
+
+// 9. Guided lessons: every lesson teaches the intended result in several students' economies
 globalThis.EconEngine = require('./engine.js');
 require('./lessons-data.js');
 const { LESSONS, grade } = globalThis.EconLessons;

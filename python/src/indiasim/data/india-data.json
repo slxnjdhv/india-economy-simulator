@@ -1,0 +1,276 @@
+{
+ "meta": {
+  "compiled": "2026-11-18",
+  "country": "India",
+  "note": "null = could not verify from an official source. FY = Indian fiscal year April-March unless notes say otherwise (PLFS years are July-June)."
+ },
+ "series": {
+  "cfpi_food_inflation": {
+   "unit": "% y-o-y, annual average of the fiscal year (April-March)",
+   "frequency": "FY",
+   "values": {
+    "2014-15": 6.4,
+    "2015-16": 4.9,
+    "2016-17": 4.2,
+    "2017-18": 1.8,
+    "2018-19": 0.1,
+    "2019-20": 6.7,
+    "2020-21": 7.7,
+    "2021-22": 3.8,
+    "2022-23": 6.6,
+    "2023-24": 7.5,
+    "2024-25": 7.3
+   },
+   "source": "Economic Survey (Ministry of Finance), Prices and Inflation chapters, 2018-19 to 2024-25 editions; FY2024-25 computed from MoSPI CPI (base 2012) CFPI index, All India Combined",
+   "url": "https://indiabudget.gov.in/budget2024-25/economicsurvey/doc/eschapter/echap03.pdf",
+   "notes": "Consumer Food Price Index (CFPI), CPI base 2012=100, All India Combined. Per-year sources: 2014-15, 2015-16, 2016-17, 2017-18 = Economic Survey 2018-19 Vol 2 Ch 4 text (https://www.indiabudget.gov.in/budget2019-20/economicsurvey/doc/vol2chapter/echap04_vol2.pdf); 2018-19 = Economic Survey 2018-19 (same) and Economic Survey 2019-20 Vol 2 Ch 5 Table 2 (https://www.indiabudget.gov.in/budget2020-21/economicsurvey/doc/vol2chapter/echap05_vol2.pdf); 2019-20 and 2020-21 = Economic Survey 2021-22 Ch 5 Table 2 (https://indiabudget.gov.in/budget2022-23/economicsurvey/doc/eschapter/echap05.pdf); 2021-22, 2022-23, 2023-24 = Economic Survey 2023-24 Ch 3 text ('3.8 per cent in FY22 to 6.6 per cent in FY23 and further to 7.5 per cent in FY24'). 2024-25 = 7.3: no full-year published figure found (Economic Survey 2024-25 gives only Apr-Dec 8.4%; RBI Annual Report 2024-25 reports 'food and beverages' 6.7%, a different index). 7.3 is computed by me from the official MoSPI eSankhyiki CPI API (https://api.mospi.gov.in/api/cpi/getCPIIndex, group 'Consumer Food Price', All India, Combined): mean of the 12 monthly y-o-y rates = 7.32, ratio of average indices = 7.29. Cross-check: the same API computation reproduces every published year above within 0.1 pp (e.g. 6.43, 4.89, 4.27, 1.82, 0.18, 6.74, 7.69, 3.80, 6.63, 7.48). Caveats: Economic Survey 2022-23 printed FY23 as 7.0 but that was April-December only; full-year is 6.6. CFPI (weight 39.06) differs from the CPI 'Food and beverages' group (weight 45.86) that RBI usually quotes as 'food inflation'. MoSPI introduced a new CPI series (base 2024) in 2026; these values are on the old 2012 base. Economic Survey statistical-appendix price tables (Table 4.x) do not carry CFPI; values are from Survey chapter tables/text, cross-checked against MoSPI eSankhyiki CPI API.",
+   "label": "Food inflation (CFPI)"
+  },
+  "core_cpi_inflation_ex_food_fuel": {
+   "unit": "% y-o-y, annual average of fiscal year",
+   "frequency": "FY",
+   "values": {
+    "2014-15": 5.4,
+    "2015-16": 4.6,
+    "2016-17": 4.8,
+    "2017-18": 4.6,
+    "2018-19": 5.8,
+    "2019-20": 4.0,
+    "2020-21": 5.5,
+    "2021-22": 6.0,
+    "2022-23": 6.1,
+    "2023-24": 4.3,
+    "2024-25": 3.5
+   },
+   "source": "RBI Annual Reports, Appendix Table 4 'Inflation, Money and Credit' (CPI Combined, 'Excluding Food and Fuel'); 2023-24 and 2024-25 from RBI Annual Report 2024-25 Ch II para II.3.9/II.3.20",
+   "url": "https://rbi.org.in/Scripts/AnnualReportPublications.aspx?Id=1389",
+   "notes": "CPI (base 2012) excluding the 'food and beverages' and 'fuel and light' groups (weight 47.3), as reported by RBI. Per-year sources: 2014-15, 2015-16 = RBI AR 2015-16 appendix (https://rbi.org.in/Scripts/AnnualReportPublications.aspx?Id=1189); 2016-17 = RBI AR 2016-17 appendix (https://rbi.org.in/Scripts/AnnualReportPublications.aspx?Id=1216) and AR 2018-19 (Id=1273); 2017-18, 2018-19, 2019-20 = RBI AR 2019-20 appendix (https://rbi.org.in/Scripts/AnnualReportPublications.aspx?Id=1302); 2020-21, 2021-22, 2022-23 = RBI AR 2022-23 appendix (Id=1389, the url above); 2023-24 (4.3) and 2024-25 (3.5) = RBI AR 2024-25 Ch II (https://www.rbi.org.in/Scripts/AnnualReportPublications.aspx?Id=1432). Economic Survey 2025-26 Ch 5 also gives 3.5 for FY25. Cross-check: recomputing from current MoSPI API indices (General minus F&B minus Fuel, weights 100/45.86/6.84) gives 5.59, 4.65, 4.82, 4.63, 5.83, 4.05, 5.53, 5.99, 6.09, 4.33, 3.54. All match within 0.05 pp except 2014-15, where RBI's 2016 table says 5.4 and the recomputation gives 5.6, likely because of later index revisions or the provisional data RBI used. RBI's measure includes petrol and diesel for vehicles, which sit in 'transport and communication', not 'fuel and light'. Economic Survey 2021-22 discusses a 'refined core' that excludes them; that measure is not given here.",
+   "label": "Core inflation (RBI)"
+  },
+  "imports_goods_services_pct_gdp": {
+   "unit": "% of GDP",
+   "frequency": "FY",
+   "values": {
+    "2014": 25.95,
+    "2015": 22.11,
+    "2016": 20.92,
+    "2017": 21.95,
+    "2018": 23.69,
+    "2019": 21.24,
+    "2020": 19.08,
+    "2021": 24.02,
+    "2022": 26.66,
+    "2023": 23.97,
+    "2024": 23.85
+   },
+   "source": "World Bank, World Development Indicators, NE.IMP.GNFS.ZS (Imports of goods and services, % of GDP)",
+   "url": "https://api.worldbank.org/v2/country/IND/indicator/NE.IMP.GNFS.ZS?format=json&date=2014:2024",
+   "notes": "Retrieved 2026-11-18, WDI last updated 2026-11-11. Keys are WDI year labels. For India, WDI national-accounts years follow the fiscal year (April-March), so '2024' is approximately FY2024-25; check this against WDI country metadata before splicing with other series. Values rounded to 2 dp from the API.",
+   "label": "Imports of goods and services"
+  },
+  "exports_goods_services_pct_gdp": {
+   "unit": "% of GDP",
+   "frequency": "FY",
+   "values": {
+    "2014": 22.97,
+    "2015": 19.81,
+    "2016": 19.16,
+    "2017": 18.79,
+    "2018": 19.93,
+    "2019": 18.66,
+    "2020": 18.68,
+    "2021": 21.4,
+    "2022": 24.04,
+    "2023": 22.35,
+    "2024": 22.06
+   },
+   "source": "World Bank, World Development Indicators, NE.EXP.GNFS.ZS (Exports of goods and services, % of GDP)",
+   "url": "https://api.worldbank.org/v2/country/IND/indicator/NE.EXP.GNFS.ZS?format=json&date=2014:2024",
+   "notes": "Retrieved 2026-11-18, WDI last updated 2026-11-11. Same year-label caveat as for imports.",
+   "label": "Exports of goods and services"
+  },
+  "real_gdp_growth": {
+   "unit": "% annual, constant prices",
+   "frequency": "FY",
+   "values": {
+    "2014": 7.41,
+    "2015": 8.0,
+    "2016": 8.26,
+    "2017": 6.8,
+    "2018": 6.45,
+    "2019": 3.87,
+    "2020": -5.78,
+    "2021": 9.69,
+    "2022": 7.61,
+    "2023": 7.21,
+    "2024": 7.1
+   },
+   "source": "World Bank, World Development Indicators, NY.GDP.MKTP.KD.ZG (GDP growth, annual %)",
+   "url": "https://api.worldbank.org/v2/country/IND/indicator/NY.GDP.MKTP.KD.ZG?format=json&date=2014:2024",
+   "notes": "Retrieved 2026-11-18, WDI last updated 2026-11-11. WDI labels 2020-2022 (-5.78, 9.69, 7.61) line up with MoSPI fiscal years FY2020-21 to FY2022-23, which supports the label-equals-FY-start reading. WDI 2023 (7.21) and 2024 (7.10) differ from figures in MoSPI's older 2011-12-base releases (for example 9.2 for FY2023-24). They may reflect MoSPI's revised national accounts series; I did not verify this. Check which MoSPI vintage you want before mixing sources.",
+   "label": "Real GDP growth"
+  },
+  "plfs_unemployment_rate_usual_status_15plus": {
+   "unit": "% of labour force, usual status (ps+ss), age 15+, all-India rural+urban, persons",
+   "frequency": "FY",
+   "values": {
+    "2017-18": 6.0,
+    "2018-19": 5.8,
+    "2019-20": 4.8,
+    "2020-21": 4.2,
+    "2021-22": 4.1,
+    "2022-23": 3.2,
+    "2023-24": 3.2
+   },
+   "source": "MoSPI/NSO, Press Note on PLFS Annual Report July 2023-June 2024, Table 3",
+   "url": "https://mospi.gov.in/sites/default/files/press_release/Press_note_AR_PLFS_2023_24_22092024.pdf",
+   "notes": "PLFS years are July-June (e.g. 2017-18 = July 2017-June 2018), not April-March fiscal years. After 2023-24 PLFS moved to calendar years, with a revised sample design from January 2025. See plfs_unemployment_rate_usual_status_15plus_calendar_year. For reference, current weekly status (CWS) UR, 15+, from the same note: 8.7, 8.7, 8.8, 7.5, 6.6, 5.1, 4.9.",
+   "label": "Unemployment (PLFS, usual status)"
+  },
+  "plfs_unemployment_rate_usual_status_15plus_calendar_year": {
+   "unit": "% of labour force, usual status (ps+ss), age 15+, all-India rural+urban, persons",
+   "frequency": "CY",
+   "values": {
+    "2023": 3.1,
+    "2024": 3.2,
+    "2025": 3.1
+   },
+   "source": "MoSPI/NSO, Key Employment Unemployment Indicators PLFS 2024 (Statement 1) for 2023 and 2024; Press Note, PLFS Annual Report 2025 for 2025",
+   "url": "https://www.mospi.gov.in/sites/default/files/publication_reports/Key_employment_unemployment_indicators_PLFS_2024_final.pdf",
+   "notes": "2025 value from https://www.mospi.gov.in/uploads/latestReleases/latest_release_1774607827733_3e8964a9-268b-4cc9-ad65-cfc8a9e32f08_Press_note_AR_PLFS_2025_23032025_V2.1_26032026_final.pdf (released March 2026). 2025 uses the revised PLFS sample design (Jan 2025 onward), so it is not strictly comparable with earlier years. Calendar-year estimates for 2021 and 2022 exist, but I did not extract them.",
+   "label": "Unemployment (PLFS, calendar years)"
+  },
+  "informal_sector_share_nonagri_workers": {
+   "unit": "% of usually working (ps+ss) workers in the non-agriculture sector who work in proprietary or partnership enterprises, all-India rural+urban, persons",
+   "frequency": "FY",
+   "values": {
+    "2017-18": null,
+    "2018-19": null,
+    "2019-20": null,
+    "2020-21": null,
+    "2021-22": 71.8,
+    "2022-23": 74.3,
+    "2023-24": 73.2
+   },
+   "source": "MoSPI/NSO, Annual Report PLFS 2023-24, Statement 8",
+   "url": "https://www.mospi.gov.in/sites/default/files/publication_reports/AnnualReport_PLFS2023-24L2.pdf",
+   "notes": "PLFS informal-sector definition (15th ICLS framework): proprietary and partnership enterprises are treated as informal sector enterprises. PLFS years are July-June. 2023-24 breakdown: rural 78.9, urban 66.2, male 76.8, female 61.2. Earlier years (2017-18 to 2020-21) are in earlier PLFS annual reports, but I could not download them (MoSPI URLs returned 404). They are null, not estimated. The PLFS Annual Report 2025 (calendar year) has been released, but I did not verify whether it contains this statement. This is an enterprise-based measure. It is not 'informal employment' in the 17th ICLS sense, which is job-based and would also count informal jobs in formal enterprises.",
+   "label": "Informal sector share of non-farm workers (PLFS)"
+  },
+  "regular_salaried_without_written_contract": {
+   "unit": "% of regular wage/salaried employees (ps+ss) in the non-agriculture sector with no written job contract, all-India rural+urban, persons",
+   "frequency": "FY",
+   "values": {
+    "2017-18": null,
+    "2018-19": null,
+    "2019-20": null,
+    "2020-21": null,
+    "2021-22": 62.0,
+    "2022-23": 58.6,
+    "2023-24": 58.0
+   },
+   "source": "MoSPI/NSO, Annual Report PLFS 2023-24, Statement 9",
+   "url": "https://www.mospi.gov.in/sites/default/files/publication_reports/AnnualReport_PLFS2023-24L2.pdf",
+   "notes": "PLFS years are July-June. Same statement, 2023-24: not eligible for paid leave 47.3%, not eligible for any specified social security benefit 53.4%. Rural 61.1, urban 55.7. Secondary summaries (ruralindiaonline.org) report 67.3% for 2019-20 and 64.3% for 2020-21. I could not check these against the official reports, so they are left out of values.",
+   "label": "Salaried workers without a written contract (PLFS)"
+  },
+  "rbi_policy_repo_rate": {
+   "unit": "% per annum, level after change",
+   "frequency": "event",
+   "values": {
+    "2014-01-28": 8.0,
+    "2015-01-15": 7.75,
+    "2015-03-04": 7.5,
+    "2015-06-02": 7.25,
+    "2015-09-29": 6.75,
+    "2016-04-05": 6.5,
+    "2016-10-04": 6.25,
+    "2017-08-02": 6.0,
+    "2018-06-06": 6.25,
+    "2018-08-01": 6.5,
+    "2019-02-07": 6.25,
+    "2019-04-04": 6.0,
+    "2019-06-06": 5.75,
+    "2019-08-07": 5.4,
+    "2019-10-04": 5.15,
+    "2020-03-27": 4.4,
+    "2020-05-22": 4.0,
+    "2022-05-04": 4.4,
+    "2022-06-08": 4.9,
+    "2022-08-05": 5.4,
+    "2022-09-30": 5.9,
+    "2022-12-07": 6.25,
+    "2023-02-08": 6.5,
+    "2025-02-07": 6.25,
+    "2025-04-09": 6.0,
+    "2025-06-06": 5.5,
+    "2025-12-05": 5.25,
+    "2026-10-07": 5.5
+   },
+   "source": "RBI Handbook of Statistics on the Indian Economy 2024-25, Table 43 (effective dates through 07-02-2025); RBI MPC resolutions, minutes and statements for later changes",
+   "url": "https://www.rbi.org.in/Scripts/PublicationsView.aspx?id=23217",
+   "notes": "Keys are effective dates. All 26 entries in the user's list (Jan 2014 to Jun 2025) are confirmed, with no corrections; exact dates are taken from HBS Table 43. Rate in force at 1 Jan 2014: 7.75 (since 29-10-2013). Post-Feb-2025 sources: 2025-04-09 cut to 6.00 (https://www.rbi.org.in/Scripts/BS_PressReleaseDisplay.aspx?prid=60279); 2025-06-06 cut 50 bps to 5.50 (https://rbi.org.in/Scripts/BS_PressReleaseDisplay.aspx?prid=60604); 2025-12-05 cut to 5.25 (https://www.rbi.org.in/Scripts/BS_PressReleaseDisplay.aspx?prid=61750, minutes prid=61856). February 2026 MPC: held at 5.25 (minutes https://www.rbi.org.in/Scripts/BS_PressReleaseDisplay.aspx?prid=62261). April, June and August 2026 holds at 5.25 rest on search excerpts of RBI minutes/bulletins, which I did not open. 2026-10-07 hike of 25 bps to 5.50, MPC 5-7 Oct 2026 (https://www.rbi.org.in/scripts/BS_PressReleaseDisplay.aspx?prid=63742). The RBI homepage showed the repo rate at 5.50% on 18 Nov 2026. Other events in the window, not repo changes: reverse repo cut alone to 3.75 on 17-04-2020; SDF introduced at 3.75 on 08-04-2022. The next MPC meeting is 2-4 Dec 2026.",
+   "label": "RBI repo rate"
+  },
+  "cpi_inflation": {
+   "label": "CPI inflation",
+   "unit": "% per year",
+   "frequency": "CY",
+   "values": {
+    "2014": 6.67,
+    "2015": 4.91,
+    "2016": 4.95,
+    "2017": 3.33,
+    "2018": 3.94,
+    "2019": 3.73,
+    "2020": 6.62,
+    "2021": 5.13,
+    "2022": 6.7,
+    "2023": 5.65,
+    "2024": 4.95
+   },
+   "source": "World Bank, World Development Indicators (FP.CPI.TOTL.ZG)",
+   "url": "https://api.worldbank.org/v2/country/IND/indicator/FP.CPI.TOTL.ZG?format=json"
+  },
+  "inr_per_usd": {
+   "label": "Rupees per US dollar",
+   "unit": "₹ per US$, annual average",
+   "frequency": "CY",
+   "values": {
+    "2014": 61.03,
+    "2015": 64.15,
+    "2016": 67.2,
+    "2017": 65.12,
+    "2018": 68.39,
+    "2019": 70.42,
+    "2020": 74.1,
+    "2021": 73.92,
+    "2022": 78.6,
+    "2023": 82.6,
+    "2024": 83.67
+   },
+   "source": "World Bank, World Development Indicators (PA.NUS.FCRF)",
+   "url": "https://api.worldbank.org/v2/country/IND/indicator/PA.NUS.FCRF?format=json"
+  },
+  "current_account_pct_gdp": {
+   "label": "Current account balance",
+   "unit": "% of GDP",
+   "frequency": "CY",
+   "values": {
+    "2014": -1.34,
+    "2015": -1.07,
+    "2016": -0.53,
+    "2017": -1.44,
+    "2018": -2.43,
+    "2019": -1.05,
+    "2020": 1.22,
+    "2021": -1.06,
+    "2022": -2.43,
+    "2023": -0.91,
+    "2024": -0.85
+   },
+   "source": "World Bank, World Development Indicators (BN.CAB.XOKA.GD.ZS)",
+   "url": "https://api.worldbank.org/v2/country/IND/indicator/BN.CAB.XOKA.GD.ZS?format=json"
+  }
+ }
+}

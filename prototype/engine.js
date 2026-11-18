@@ -35,6 +35,39 @@
     return h;
   }
   const clamp = (x, lo, hi) => Math.min(hi, Math.max(lo, x));
+
+  // Portable exp, log and pow. JavaScript engines may round Math.exp/log/pow differently in the last bit,
+  // and the simulation amplifies such differences. These use only + − × ÷ (exact in every engine),
+  // so the same economy number gives the same run in Chrome, Safari, Firefox, Node and Python.
+  const LN2 = 0.6931471805599453;
+  function dlog(x) {
+    if (!(x > 0)) return x === 0 ? -Infinity : NaN;
+    let k = 0;
+    while (x > 1.4142135623730951) { x /= 2; k++; }
+    while (x < 0.7071067811865476) { x *= 2; k--; }
+    const s = (x - 1) / (x + 1), s2 = s * s;
+    let term = s, sum = 0;
+    for (let n = 1; n < 60; n += 2) { const add = term / n; sum += add; if (Math.abs(add) < 1e-18) break; term *= s2; }
+    return 2 * sum + k * LN2;
+  }
+  function dexp(x) {
+    if (x > 700) return Infinity;
+    if (x < -700) return 0;
+    const k = Math.round(x / LN2), r = x - k * LN2;
+    let term = 1, sum = 1;
+    for (let n = 1; n < 30; n++) { term = term * r / n; sum += term; if (Math.abs(term) < 1e-18) break; }
+    let p = 1;
+    if (k > 0) for (let i = 0; i < k; i++) p *= 2; else for (let i = 0; i < -k; i++) p /= 2;
+    return sum * p;
+  }
+  const dpow = (a, b) => dexp(b * dlog(a));
+  function dcos(x) {
+    const TWO_PI = 2 * Math.PI;
+    const y = x - TWO_PI * Math.round(x / TWO_PI), y2 = y * y; // reduce to [−π, π]
+    let term = 1, sum = 1;
+    for (let n = 2; n < 60; n += 2) { term = -term * y2 / ((n - 1) * n); sum += term; if (Math.abs(term) < 1e-18) break; }
+    return sum;
+  }
   function gini(values) {
     const a = Float64Array.from(values).sort();
     let cum = 0, total = 0;
@@ -44,7 +77,7 @@
 
   // Settings marked [cal] are calibrated to Indian data, 2015–2024 (see calibration/ and calibration.html).
   const DEFAULTS = {
-    seed: 35,
+    seed: 74,
     households: 1000, firms: 100, foodFirms: 30,
     foodWeight: 0.46,          // food share of household budgets and of CPI (India CPI ≈ 46%)
     productivity: 3, wage0: 100, markup: 0.3,
@@ -276,12 +309,13 @@
 
       // 1. shocks: scripted events plus random month-to-month conditions
       if (P.foodSd || P.oilSd || P.demSd) {
-        const r6 = R(6), gauss = () => Math.sqrt(-2 * Math.log(1 - r6())) * Math.cos(2 * Math.PI * r6());
+        // normal draws by the Box–Muller method, with portable log and cos (sqrt is exact in every engine)
+        const r6 = R(6), gauss = () => Math.sqrt(-2 * dlog(1 - r6())) * dcos(2 * Math.PI * r6());
         this.zf = P.foodRho * this.zf + P.foodSd * gauss();
         this.zo = P.oilRho * this.zo + P.oilSd * gauss();
         this.zd = P.demRho * this.zd + P.demSd * gauss();
       }
-      const harvest = Math.exp(this.zf);
+      const harvest = dexp(this.zf);
       for (let f = 0; f < F; f++) lamEff[f] = this.lam[f] * this.shockFactor(f, t) * (this.isFood[f] ? harvest : 1);
 
       // 2. policy: during warm-up an RBI-style rule steers the economy; from month 0 the player decides
@@ -292,18 +326,18 @@
       const lastInfl = this.hist.length ? this.hist[this.hist.length - 1].infl : P.target;
       // wage-setters who trust the target expect 4%; the rest follow recent inflation, partly last year's figure
       const piW = P.anchor * P.target + (1 - P.anchor) * ((1 - P.wageIndex) * this.piAd + P.wageIndex * lastInfl);
-      const pim = Math.pow(1 + piW, 1 / 12) - 1;
+      const pim = dpow(1 + piW, 1 / 12) - 1;
       const nRealLoan = P.neutralRepo + P.loanSpread - P.target;
       const nRealDep = P.neutralRepo - P.depSpread - P.target;
-      const conf = this.demandFactor(t) * Math.exp(this.zd);
+      const conf = this.demandFactor(t) * dexp(this.zd);
       const iFactor = clamp(1 - P.iSens * (rt.loan - piE - nRealLoan), 0.3, 1.5) * Math.max(0.1, 1 - 3 * (1 - conf));
       const aInc = clamp(P.aInc - P.cSens * (rt.deposit - piE - nRealDep), 0.75, 0.98) * conf;
       const iFactorInf = Math.max(0.1, 1 - 3 * (1 - conf));                // moneylender rates don't follow the repo rate
-      this.pw *= Math.pow(1 + P.worldInfl, 1 / 12);
+      this.pw *= dpow(1 + P.worldInfl, 1 / 12);
       // rupee cost of imported inputs per unit of output; firms use less of them when they get dearer
       const cpiPrev = this.hist.length ? this.hist[this.hist.length - 1].cpi : 1;
-      const relImp = this.er * this.pw * this.importFactor(t) * Math.exp(this.zo) / cpiPrev;
-      const uc = this.impCost0 * Math.pow(relImp, 1 - P.importSubst) * cpiPrev;
+      const relImp = this.er * this.pw * this.importFactor(t) * dexp(this.zo) / cpiPrev;
+      const uc = this.impCost0 * dpow(relImp, 1 - P.importSubst) * cpiPrev;
 
       // 3. firms plan output, wages and prices
       let r = R(1);
@@ -412,7 +446,7 @@
       this.gov -= gSpent;
       // the rest of the world buys exports from non-food firms; a cheaper rupee makes them more competitive
       const q = this.er * this.pw / (this.pn / this.p0);
-      const Xwant = this.x0 * Math.max(0.2, 1 - 3 * (1 - conf)) * Math.pow(q, P.exportElast) * this.pn;
+      const Xwant = this.x0 * Math.max(0.2, 1 - 3 * (1 - conf)) * dpow(q, P.exportElast) * this.pn;
       let X = 0;
       for (let s = 0; s < Math.max(40, 2 * F) && Xwant - X > 1e-6; s++) X += this.buyFrom([this.randFirm(r, false)], Xwant - X);
       this.row -= X;
@@ -484,9 +518,9 @@
       const erPrev = this.hist.length >= 12 ? prev.er : 1;
       const r5 = R(5), noise = (r5() + r5() + r5() + r5() - 2) * Math.sqrt(3);
       if (P.erRho > 0) this.ze = P.erRho * this.ze + P.erNoise * noise; // persistent capital-flow swings
-      const lnT = Math.log(cpi / this.pw) - P.erRate * (this.repo - this.rStar) + P.erTrade * this.nfd + this.ze;
+      const lnT = dlog(cpi / this.pw) - P.erRate * (this.repo - this.rStar) + P.erTrade * this.nfd + this.ze;
       const erNow = this.er;
-      this.er = Math.exp(Math.log(this.er) + P.erAdj * (lnT - Math.log(this.er)) + (P.erRho > 0 ? 0 : P.erNoise * noise));
+      this.er = dexp(dlog(this.er) + P.erAdj * (lnT - dlog(this.er)) + (P.erRho > 0 ? 0 : P.erNoise * noise));
       const deficit = gSpent + transfers - taxes;
       const wage = employed ? wages / employed : 0;
       const rec = {
@@ -636,7 +670,8 @@
   // cfg = { params: {...model settings}, seed, months, policy: { mode: 'rule'|'fixed', repo, tax, spend },
   //         shocks: [{ key: 'monsoon'|'oil'|'slowdown', start, depth?, months? }] }
   const LAB_FIELDS = ['infl', 'foodInfl', 'coreInfl', 'u', 'repo', 'Y', 'realWage', 'defRatio', 'debtRatio', 'gini', 'er', 'tradeBal', 'infShare'];
-  function runLab(cfg) {
+  // Build and warm up the economy for an experiment, then apply the experiment's settings.
+  function labSim(cfg) {
     const shocks = (cfg.shocks || []).map(x => Object.assign({}, SHOCKS[x.key], { key: x.key }, x));
     const sim = new Sim(Object.assign({}, cfg.params || {}, { seed: cfg.seed, shocks }));
     sim.run(sim.P.burnIn);
@@ -648,6 +683,10 @@
     if (pol.tax != null) sim.taxRate = pol.tax;
     if (pol.spend != null) sim.govShare = pol.spend;
     if (pol.spendDelta != null) sim.govShare = clamp(sim.govShare + pol.spendDelta, 0, 0.3);
+    return sim;
+  }
+  function runLab(cfg) {
+    const sim = labSim(cfg);
     // Y is an index (100 = output at the end of the warm-up); spending flows are % of that month's GDP.
     const last = sim.hist[sim.hist.length - 1], base = last.Y, baseGdp = last.gdp;
     const flows = { gdp: 1, C: 1, I: 1, G: 1, X: 1, M: 1 };
@@ -666,5 +705,5 @@
 
 
   const RUPEE_START = 83; // ₹ per US dollar at the start of every game (the model tracks an index from 1)
-  return { Sim, Game, SCENARIOS, SHOCKS, MONSOON, DEFAULTS, taylorRule, mulberry32, gini, runLab, LAB_FIELDS, RUPEE_START };
+  return { Sim, Game, SCENARIOS, SHOCKS, MONSOON, DEFAULTS, taylorRule, mulberry32, gini, runLab, labSim, LAB_FIELDS, RUPEE_START };
 });

@@ -1,0 +1,89 @@
+{
+ "period": "2015–2024 (annual)",
+ "moments": {
+  "inflMean": {
+   "value": 0.049909999999999996,
+   "scale": 0.005,
+   "weight": 1,
+   "note": "CPI (combined) inflation, mean"
+  },
+  "inflSd": {
+   "value": 0.011299700094348622,
+   "scale": 0.004,
+   "weight": 1,
+   "note": "CPI inflation, standard deviation across years"
+  },
+  "foodSd": {
+   "value": 0.025945241481927964,
+   "scale": 0.008,
+   "weight": 1,
+   "note": "Food (CFPI) inflation, standard deviation"
+  },
+  "coreSd": {
+   "value": 0.008904430857100798,
+   "scale": 0.005,
+   "weight": 0,
+   "note": "Core inflation, standard deviation (not targeted: used to check the model)"
+  },
+  "inflAc1": {
+   "value": 0.23073326435475297,
+   "scale": 0.15,
+   "weight": 1,
+   "note": "CPI inflation, year-to-year persistence (autocorrelation)"
+  },
+  "uMean": {
+   "value": 0.04471428571428572,
+   "scale": 0.005,
+   "weight": 1,
+   "note": "PLFS unemployment, usual status, age 15+, mean"
+  },
+  "repoMean": {
+   "value": 0.058128943783217354,
+   "scale": 0.004,
+   "weight": 1,
+   "note": "RBI repo rate, mean"
+  },
+  "repoSd": {
+   "value": 0.010616322289229698,
+   "scale": 0.004,
+   "weight": 0,
+   "note": "RBI repo rate, standard deviation (not targeted)"
+  },
+  "erChgMean": {
+   "value": 0.0324597524764797,
+   "scale": 0.005,
+   "weight": 1,
+   "note": "Rupee per US$, average yearly change"
+  },
+  "erChgSd": {
+   "value": 0.03018668967923062,
+   "scale": 0.01,
+   "weight": 1,
+   "note": "Rupee per US$, standard deviation of yearly change"
+  },
+  "tbMean": {
+   "value": -0.010549999999999999,
+   "scale": 0.005,
+   "weight": 0,
+   "note": "Current account, % of GDP (not targeted: the model has no remittances or foreign investment)"
+  },
+  "importsGdp": {
+   "value": 0.22748999999999997,
+   "scale": 0.02,
+   "weight": 1,
+   "note": "Imports of goods and services, % of GDP"
+  },
+  "informal": {
+   "value": 0.7310000000000001,
+   "scale": 0.03,
+   "weight": 1,
+   "note": "Informal sector share of non-farm jobs (PLFS 2021-22 to 2023-24)"
+  },
+  "growthSd": {
+   "value": 0.013675812851266178,
+   "scale": 0.008,
+   "weight": 1,
+   "note": "Real GDP growth, standard deviation (excluding the 2020–21 pandemic years)"
+  }
+ }
+}
