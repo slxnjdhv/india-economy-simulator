@@ -42,6 +42,7 @@
     return total > 0 ? (2 * cum) / (a.length * total) - (a.length + 1) / a.length : 0;
   }
 
+  // Settings marked [cal] are calibrated to Indian data, 2015–2024 (see calibration/ and calibration.html).
   const DEFAULTS = {
     seed: 28,
     households: 1000, firms: 100, foodFirms: 30,
@@ -52,33 +53,37 @@
     neutralRepo: 0.06, repo0: 0.06, rStarLearn: 0.05,
     ruleInfl: 1.5, ruleU: 0.5,      // how strongly the RBI rule reacts to inflation and to unemployment
     loanSpread: 0.03, depSpread: 0.005,
-    anchor: 0.5,               // how strongly expectations stick to the 4% target
+    anchor: 0.8295,               // how strongly expectations stick to the 4% target [cal]
     expLearn: 0.12,            // how fast expectations follow actual inflation
-    phillips: 0.6, uNatural: 0.07, vacPremium: 0.001,
-    calvo: 0.35, priceCut: 0.5,               // share of firms that reprice each month
+    phillips: 0.6, uNatural: 0.04145, vacPremium: 0.001, // [cal]
+    calvo: 0.3446, priceCut: 0.5,               // share of firms that reprice each month [cal]
     invTarget: 0.5, muInv: 0.05, invAdj: 0.2,
     fireCap: 0.25, quitRate: 0.01, searchTries: 6, resDecay: 0.95,
     taxRate: 0.10, transferRatio: 0.3, govShare: 0.06,
     gst: null,                 // GST on household purchases, paid by everyone including informal workers.
                                // null: set automatically to make up for the untaxed informal wage bill
-    gstAuto: 1.3,
+    gstAuto: 1.169, // [cal]
     aInc: 0.9, aW: 0.05, cSens: 1.0,   // consumption out of income and wealth; sensitivity to real interest
     iShare: 0.10, iSens: 7,            // investment spending and its sensitivity to real loan rates
     foodDecay: 0.10, goodsDecay: 0.02,
     switchProb: 0.05,
     // open economy: the rupee, imports and exports
-    importShare: 0.15,         // imported inputs (oil, components) as a share of firms' unit costs
+    importShare: 0.2615,         // imported inputs (oil, components) as a share of firms' unit costs [cal]
     exportElast: 1.5,          // how strongly exports respond to a cheaper rupee
     importSubst: 0.5,          // how much firms cut imported inputs when they get dearer
-    worldInfl: 0.02,           // inflation in the rest of the world
+    worldInfl: 0.006359,       // world inflation as seen by India; calibrated to the rupee's 3%-a-year fall [cal]
     erRate: 3,                 // a 1-point higher repo rate (versus neutral) strengthens the rupee by about 3%
     erTrade: 2,                // foreign debt of 1% of a year's GDP weakens the rupee by about 2%
     erAdj: 0.1,                // share of the gap to its fundamental value the rupee closes each month
-    erNoise: 0.004,            // monthly capital-flow noise in the rupee
+    erNoise: 0.01114,            // monthly capital-flow noise in the rupee [cal]
     // informal sector
-    informal: 0.4,             // informal firms: about 1.6× this share of food firms and 0.8× of non-food firms
+    informal: 0.7524,             // informal firms: about 1.6× this share of food firms and 0.8× of non-food firms [cal]
     infProd: 0.6, infWage: 0.6, // informal productivity and starting wages, relative to formal firms
     infRate: 0.24,             // moneylender interest rate; it doesn't move with the repo rate
+    // random aggregate shocks every month (AR(1) in logs): harvests, world oil prices, demand
+    foodSd: 0.01105, foodRho: 0.9, // [cal]
+    oilSd: 0.02188, oilRho: 0.9, // [cal]
+    demSd: 0.006293, demRho: 0.8, // [cal]
     shocks: [],
   };
 
@@ -158,7 +163,9 @@
       let nInfW = 0;
       for (let i = 0; i < nEmp; i++) if (this.isInf[this.emp[i]]) { this.hhInf[i] = 1; nInfW++; }
       for (let i = nEmp, k = 0; i < H; i++, k++) this.hhInf[i] = (k + 0.5) / (H - nEmp) < nInfW / nEmp ? 1 : 0; // the unemployed in proportion
-      let Y0 = 0;
+      let Y0 = 0, wb0 = 0, n0 = 0;
+      for (let f = 0; f < F; f++) { wb0 += this.n[f] * this.w[f]; n0 += this.n[f]; }
+      this.wageAvg0 = wb0 / Math.max(n0, 1); // average starting wage, for the real-wage index
       for (let f = 0; f < F; f++) {
         this.p[f] = this.p0;
         this.ed[f] = this.sales[f] = this.n[f] * this.lam[f];
@@ -182,7 +189,8 @@
       this.baseUnits = Y0;
       // the rest of the world: the rupee (index, 1 at the start), world prices, and its rupee balances
       this.er = 1; this.pw = 1; this.row = 0; this.tbS = 0;
-      this.erBase = 1; // reported rupee index is rescaled to 1 when the game starts (month 0)
+      this.erBase = 1;
+      this.zf = 0; this.zo = 0; this.zd = 0; // random harvest, oil-price and demand conditions // reported rupee index is rescaled to 1 when the game starts (month 0)
       this.x0 = Y0 * this.impCost0 / this.p0; // exports start equal to imports in value
       this.pf = this.pn = this.p0;
       this.uLast = P.uNatural;
@@ -260,8 +268,15 @@
       const R = k => mulberry32(mix(P.seed, t + 1000003, k));
       const { p, w, lamEff, inv, ed, sales, rev, d, L, n, vac, unfilled, invest, investSpent, emp, m, inc } = this;
 
-      // 1. shocks
-      for (let f = 0; f < F; f++) lamEff[f] = this.lam[f] * this.shockFactor(f, t);
+      // 1. shocks: scripted events plus random month-to-month conditions
+      if (P.foodSd || P.oilSd || P.demSd) {
+        const r6 = R(6), gauss = () => Math.sqrt(-2 * Math.log(1 - r6())) * Math.cos(2 * Math.PI * r6());
+        this.zf = P.foodRho * this.zf + P.foodSd * gauss();
+        this.zo = P.oilRho * this.zo + P.oilSd * gauss();
+        this.zd = P.demRho * this.zd + P.demSd * gauss();
+      }
+      const harvest = Math.exp(this.zf);
+      for (let f = 0; f < F; f++) lamEff[f] = this.lam[f] * this.shockFactor(f, t) * (this.isFood[f] ? harvest : 1);
 
       // 2. policy: during warm-up an RBI-style rule steers the economy; from month 0 the player decides
       if (t < 0 || this.policyRule === 'auto') this.ruleStep();
@@ -270,14 +285,14 @@
       const piE = this.piE, pim = Math.pow(1 + piE, 1 / 12) - 1;
       const nRealLoan = P.neutralRepo + P.loanSpread - P.target;
       const nRealDep = P.neutralRepo - P.depSpread - P.target;
-      const conf = this.demandFactor(t);
-      const iFactor = clamp(1 - P.iSens * (rt.loan - piE - nRealLoan), 0.3, 1.5) * (1 - 3 * (1 - conf));
+      const conf = this.demandFactor(t) * Math.exp(this.zd);
+      const iFactor = clamp(1 - P.iSens * (rt.loan - piE - nRealLoan), 0.3, 1.5) * Math.max(0.1, 1 - 3 * (1 - conf));
       const aInc = clamp(P.aInc - P.cSens * (rt.deposit - piE - nRealDep), 0.75, 0.98) * conf;
-      const iFactorInf = 1 - 3 * (1 - conf);                 // moneylender rates don't follow the repo rate
+      const iFactorInf = Math.max(0.1, 1 - 3 * (1 - conf));                // moneylender rates don't follow the repo rate
       this.pw *= Math.pow(1 + P.worldInfl, 1 / 12);
       // rupee cost of imported inputs per unit of output; firms use less of them when they get dearer
       const cpiPrev = this.hist.length ? this.hist[this.hist.length - 1].cpi : 1;
-      const relImp = this.er * this.pw * this.importFactor(t) / cpiPrev;
+      const relImp = this.er * this.pw * this.importFactor(t) * Math.exp(this.zo) / cpiPrev;
       const uc = this.impCost0 * Math.pow(relImp, 1 - P.importSubst) * cpiPrev;
 
       // 3. firms plan output, wages and prices
@@ -339,11 +354,12 @@
       }
 
       // 7. wages, taxes and transfers
-      let wages = 0, employed = 0, taxes = 0, transfers = 0, infEmployed = 0;
+      let wages = 0, employed = 0, taxes = 0, transfers = 0, infEmployed = 0, nfEmployed = 0, nfInf = 0;
       for (let i = 0; i < H; i++) {
         const f = emp[i];
         if (f < 0) continue;
         if (this.isInf[f]) infEmployed++;
+        if (!this.isFood[f]) { nfEmployed++; if (this.isInf[f]) nfInf++; }
         const pay = w[f], tax = this.isInf[f] ? 0 : pay * this.taxRate; // informal wages go untaxed
         d[f] -= pay; this.gov += tax; m[i] += pay - tax; inc[i] += pay - tax;
         wages += pay; employed++; taxes += tax;
@@ -466,9 +482,9 @@
         t, repo: this.repo, loanRate: rt.loan, taxRate: this.taxRate, govShare: this.govShare,
         cpi, pfi: this.pf / this.p0, pni: this.pn / this.p0,
         infl, foodInfl, coreInfl, u, Y, C: consumption, I, G: gSpent, gdp, piE: this.piE, aInc, iFactor,
-        wage, realWage: (wage / P.wage0) / cpi, deficit, defRatio: deficit / gdp, debtRatio: -this.gov / (12 * gdp),
+        wage, realWage: (wage / this.wageAvg0) / cpi, deficit, defRatio: deficit / gdp, debtRatio: -this.gov / (12 * gdp),
         gini: gini(m), residual, loans, money: money - this.gov - this.bankEq - this.row,
-        er: erNow / this.erBase, erChg: erNow / erPrev - 1, X, M, tradeBal: (X - M) / gdp, infShare: employed ? infEmployed / employed : 0,
+        er: erNow / this.erBase, erChg: erNow / erPrev - 1, X, M, tradeBal: (X - M) / gdp, infShare: employed ? infEmployed / employed : 0, infShareNF: nfEmployed ? nfInf / nfEmployed : 0,
       };
       this.hist.push(rec);
       this.t++;
@@ -584,7 +600,7 @@
       if (!h.length) return null;
       const n = h.length, avg = f => h.reduce((s, r) => s + f(r), 0) / n;
       const inflGap = avg(r => Math.abs(r.infl - 0.04));
-      const uGap = avg(r => Math.max(0, r.u - 0.07));
+      const uGap = avg(r => Math.max(0, r.u - sim.P.uNatural));
       const defGap = avg(r => Math.max(0, r.defRatio - 0.045));
       const fiscal = this.scenario.levers.includes('tax');
       return {

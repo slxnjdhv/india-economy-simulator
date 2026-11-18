@@ -1,6 +1,6 @@
 # Economy Lab: working prototype
 
-Three pages, no install. Open them in any modern browser, or use the live site:
+Four pages, no install. Open them in any modern browser, or use the live site:
 https://slxnjdhv.github.io/india-economy-simulator/prototype/
 
 ## 1. Play a scenario (`index.html`)
@@ -61,20 +61,24 @@ Runs happen in parallel in the browser. 100 economies of 10,000 households each 
 You can download a summary CSV or every run as CSV. "Copy settings" saves the experiment as text, so anyone can load it and repeat it exactly.
 
 ## How the economy works
-- **Informal sector.** About 55% of jobs are informal. Informal firms pay no tax on wages and are less productive. They borrow from moneylenders at 24%, a rate that doesn't move with the repo rate, which weakens monetary policy. Workers without formal qualifications or documents can only find informal jobs. Everyone pays GST on what they buy.
+- **Informal sector.** About 74% of non-farm jobs are informal, matching PLFS. Informal firms pay no tax on wages and are less productive. They borrow from moneylenders at 24%, a rate that doesn't move with the repo rate, which weakens monetary policy. Workers without formal qualifications or documents can only find informal jobs. Everyone pays GST on what they buy.
 - **Rupee and trade.** Firms import inputs such as oil, and non-food firms export. The rupee starts each game at ₹83 per US dollar and floats:
   - it weakens when Indian inflation runs above world inflation, or when foreign debt builds up;
   - it strengthens when the RBI raises rates.
 - **Oil shocks** raise world oil prices, which widens the trade deficit and weakens the rupee.
+- **Random shocks.** Every month brings small random changes in harvests, world oil prices and demand, sized to match how much Indian inflation, food prices and growth vary.
+
+## 4. Calibration report (`calibration.html`)
+Shows how closely the model matches Indian data for 2015–2024, the settings the calibration chose, and where the model still falls short. The data, sources and calibration program are in [`../calibration/`](../calibration/).
 
 ## Files
 - `engine.js`: the agent-based model. Households, firms, a banking sector, the government and the RBI interact every month. The accounts are checked every month, and the same economy number always gives the same run.
 - `lessons-data.js`: the seven lessons, their experiments and grading.
 - `charts.js`, `shared.css`: charts and styles shared by all pages (light and dark themes).
-- `test.js`: 26 automated checks. They cover the rupee, trade and informal sector, and confirm that every lesson gives its intended result and grades correctly. Run `node test.js`.
+- `test.js`: 27 automated checks. They cover the rupee, trade, the informal sector and the calibration, and confirm that every lesson gives its intended result and grades correctly. Run `node test.js`.
 
 ## Known limits (prototype)
-- Teaching tool, not a forecast. Parameters are hand-tuned to India-like levels, not estimated from RBI, MOSPI or PLFS data.
+- Teaching tool, not a forecast. Eleven settings are calibrated to 2015–2024 Indian data; the rest are hand-tuned. Inflation is less persistent than in India, and average inflation sits near the 4% target rather than India's 5%.
 - Two goods sectors and one simplified bank. There's no capital stock yet.
 - The rupee is set by relative prices, interest rates and foreign debt, with some random capital-flow noise. The RBI doesn't yet use its dollar reserves to steady it.
 - The labour market is split: informal workers can't move into formal jobs. Real-world movement between the two sectors isn't modelled yet.

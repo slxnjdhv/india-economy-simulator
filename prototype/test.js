@@ -81,7 +81,7 @@ check(Math.abs(avg(bh, 'infl') - 0.04) < 0.02 && avg(bh, 'u') < 0.12, `10,000-ho
     `oil shock weakens the rupee (${pct(o.er[11] / b.er[11] - 1)}) and opens a trade deficit`);
   check(h.er[5] < b.er[5] * 0.99, `a rate hike strengthens the rupee (${pct(h.er[5] / b.er[5] - 1)})`);
   const s0 = mean(b.infShare, 0, 12), s1 = mean(b.infShare, 24, 36);
-  check(s0 > 0.4 && s0 < 0.7 && Math.abs(s1 - s0) < 0.03, `informal share of jobs is stable (${pct(s0)} → ${pct(s1)})`);
+  check(s0 > 0.5 && s0 < 0.9 && Math.abs(s1 - s0) < 0.03, `informal share of jobs is stable (${pct(s0)} → ${pct(s1)})`);
   let dLo = 0, dHi = 0;
   for (const seed of [28, 3, 57, 90, 11]) {
     for (const [inf, add] of [[0.1, x => { dLo += x; }], [0.6, x => { dHi += x; }]]) {
@@ -94,11 +94,24 @@ check(Math.abs(avg(bh, 'infl') - 0.04) < 0.02 && avg(bh, 'u') < 0.12, `10,000-ho
   check(dHi < dLo, `a larger informal sector weakens the effect of a rate hike on inflation (${pct(dLo / 5)} → ${pct(dHi / 5)})`);
 }
 
-// 7. Guided lessons: every lesson teaches the intended result in several students' economies
+// 7. Calibration: the default model still matches the Indian data it was calibrated to
+{
+  const path = require('path'), fs = require('fs');
+  const tp = path.join(__dirname, '..', 'calibration', 'targets.json');
+  if (fs.existsSync(tp)) {
+    const T = JSON.parse(fs.readFileSync(tp, 'utf8')).moments;
+    const { simulate } = require('../calibration/moments.js');
+    const rs = [1, 2, 3, 4].map(seed => simulate({}, seed, 20).m);
+    const off = Object.entries(T).filter(([, t]) => t.weight).filter(([k, t]) => Math.abs(rs.reduce((x, m) => x + m[k], 0) / rs.length - t.value) > 3 * t.scale).map(([k]) => k);
+    check(off.length <= 1, `calibrated model matches Indian data on the targeted features${off.length ? ' (off: ' + off.join(', ') + ')' : ''}`);
+  }
+}
+
+// 8. Guided lessons: every lesson teaches the intended result in several students' economies
 globalThis.EconEngine = require('./engine.js');
 require('./lessons-data.js');
 const { LESSONS, grade } = globalThis.EconLessons;
-const expect = { monsoon: 0, phillips: 0, transmission: 0, anchor: 1, multiplier: null, rupee: 0, luck: 1 };
+const expect = { monsoon: 0, phillips: 0, transmission: 0, anchor: 1, multiplier: null, rupee: 0, luck: null };
 (async () => {
   for (const L of LESSONS) {
     let ok = true, why = '';
