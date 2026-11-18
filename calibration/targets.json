@@ -27,9 +27,9 @@
   },
   "inflAc1": {
    "value": 0.23073326435475297,
-   "scale": 0.3,
-   "weight": 0,
-   "note": "CPI inflation, year-to-year persistence (not targeted)"
+   "scale": 0.15,
+   "weight": 1,
+   "note": "CPI inflation, year-to-year persistence (autocorrelation)"
   },
   "uMean": {
    "value": 0.04471428571428572,

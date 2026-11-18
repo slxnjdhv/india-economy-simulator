@@ -122,6 +122,8 @@
           <label class="f">Random harvest shocks, % a month<input type="number" id="foodSd" min="0" max="20" step="0.5"></label>
           <label class="f">Random oil-price shocks, % a month<input type="number" id="oilSd" min="0" max="30" step="0.5"></label>
           <label class="f">Random demand shocks, % a month<input type="number" id="demSd" min="0" max="5" step="0.1"></label>
+          <label class="f">Wage indexation to last year's inflation, %<input type="number" id="wageIndex" min="0" max="100" step="5"></label>
+          <label class="f">RBI rate smoothing (0–1)<input type="number" id="ruleSmooth" min="0" max="0.95" step="0.05"></label>
         </div>
       </details>
     </fieldset>
@@ -195,13 +197,13 @@
   const $ = id => document.getElementById(id);
 
   // ---------- form fields: id, how the form shows it (percent or plain), default ----------
-  const PCT = new Set(['repo', 'target', 'tax', 'spend', 'calvo', 'foodWeight', 'uNatural', 'quitRate', 'transferRatio', 'informal', 'importShare', 'infProd', 'infRate', 'worldInfl', 'foodSd', 'oilSd', 'demSd']);
+  const PCT = new Set(['repo', 'target', 'tax', 'spend', 'calvo', 'foodWeight', 'uNatural', 'quitRate', 'transferRatio', 'informal', 'importShare', 'infProd', 'infRate', 'worldInfl', 'foodSd', 'oilSd', 'demSd', 'wageIndex']);
   const FIELDS = {
     households: D.households, firms: D.firms, months: 36, burnIn: D.burnIn,
     mode: 'rule', repo: 0.0625, target: D.target, ruleInfl: D.ruleInfl, ruleU: D.ruleU, tax: D.taxRate, spend: D.govShare,
     anchor: D.anchor, phillips: D.phillips, calvo: D.calvo, foodWeight: D.foodWeight,
     cSens: D.cSens, iSens: D.iSens, aInc: D.aInc, markup: D.markup, uNatural: D.uNatural, quitRate: D.quitRate, transferRatio: D.transferRatio, expLearn: D.expLearn,
-    informal: D.informal, importShare: D.importShare, erRate: D.erRate, exportElast: D.exportElast, infProd: D.infProd, infRate: D.infRate, worldInfl: D.worldInfl, erTrade: D.erTrade, foodSd: D.foodSd, oilSd: D.oilSd, demSd: D.demSd,
+    informal: D.informal, importShare: D.importShare, erRate: D.erRate, exportElast: D.exportElast, infProd: D.infProd, infRate: D.infRate, worldInfl: D.worldInfl, erTrade: D.erTrade, foodSd: D.foodSd, oilSd: D.oilSd, demSd: D.demSd, wageIndex: D.wageIndex, ruleSmooth: D.ruleSmooth,
     runs: 40, seed: 1, sweep: '', sweepFrom: 4, sweepTo: 8, sweepN: 5,
   };
   const SHOCK_DEF = { monsoon: [false, 3, 6], oil: [false, 3, 50], slowdown: [false, 3, 3.5] };
@@ -296,7 +298,7 @@
           households: h, firms: f, foodFirms: Math.max(1, Math.round(f * 0.3)), burnIn: clampInt(v.burnIn, 24, 240),
           target: o.target, ruleInfl: o.ruleInfl, ruleU: o.ruleU, anchor: o.anchor, phillips: o.phillips, calvo: o.calvo, foodWeight: o.foodWeight,
           cSens: o.cSens, iSens: o.iSens, aInc: o.aInc, markup: o.markup, uNatural: o.uNatural, quitRate: o.quitRate, transferRatio: o.transferRatio, expLearn: o.expLearn,
-          informal: o.informal, importShare: o.importShare, erRate: o.erRate, exportElast: o.exportElast, infProd: o.infProd, infRate: o.infRate, worldInfl: o.worldInfl, erTrade: o.erTrade, foodSd: o.foodSd, oilSd: o.oilSd, demSd: o.demSd,
+          informal: o.informal, importShare: o.importShare, erRate: o.erRate, exportElast: o.exportElast, infProd: o.infProd, infRate: o.infRate, worldInfl: o.worldInfl, erTrade: o.erTrade, foodSd: o.foodSd, oilSd: o.oilSd, demSd: o.demSd, wageIndex: o.wageIndex, ruleSmooth: o.ruleSmooth,
           neutralRepo: D.neutralRepo + (o.target - D.target),
         },
         policy: { mode: o.mode === 'fixed' || v.sweep === 'repo' ? 'fixed' : 'rule', repo: o.repo, tax: o.tax, spend: o.spend },

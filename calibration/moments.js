@@ -31,7 +31,8 @@ function momentsFromAnnual(a) {
   return {
     inflMean: mean(a.map(r => r.infl)),
     inflSd: sd(a.map(r => r.infl)),
-    inflAc1: ac1(a.map(r => r.infl)),
+    // persistence over 10-year windows, the same length as the data (short samples bias it downwards)
+    inflAc1: mean([0, 10].filter(i => a.length >= i + 10).map(i => ac1(a.slice(i, i + 10).map(r => r.infl)))),
     foodSd: sd(a.map(r => r.food)),
     coreSd: sd(a.map(r => r.core)),
     uMean: mean(a.map(r => r.u)),

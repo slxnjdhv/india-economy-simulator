@@ -111,7 +111,7 @@ check(Math.abs(avg(bh, 'infl') - 0.04) < 0.02 && avg(bh, 'u') < 0.12, `10,000-ho
 globalThis.EconEngine = require('./engine.js');
 require('./lessons-data.js');
 const { LESSONS, grade } = globalThis.EconLessons;
-const expect = { monsoon: 0, phillips: 0, transmission: 0, anchor: 1, multiplier: null, rupee: 0, luck: null };
+const expect = { monsoon: 0, phillips: 0, transmission: 0, anchor: null, multiplier: null, rupee: 0, luck: null };
 (async () => {
   for (const L of LESSONS) {
     let ok = true, why = '';
@@ -127,6 +127,11 @@ const expect = { monsoon: 0, phillips: 0, transmission: 0, anchor: 1, multiplier
     }
     check(ok, `lesson "${L.title}" gives the intended result and grades correctly${why ? ' (' + why + ')' : ''}`);
   }
+  // trust in the target: with random shocks the effect is clear in most economies, not every one
+  const A = LESSONS.find(l => l.id === 'anchor');
+  let hits = 0;
+  for (let k = 1; k <= 12; k++) if (A.predict.actual(await A.run(k * 97, async () => {})) === 1) hits++;
+  check(hits >= 8, `trust lesson: high inflation lasts longer without trust in most economies (${hits} of 12)`);
   console.log(failures ? `\n${failures} check(s) failed` : '\nall checks passed');
   process.exit(failures ? 1 : 0);
 })();

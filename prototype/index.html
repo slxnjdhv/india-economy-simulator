@@ -102,7 +102,7 @@
       </div>
       <div class="tools">
         <button id="restart">Restart</button>
-        <label class="small row" style="justify-content:flex-end">Economy no. <input id="seed" type="number" min="1" value="28" style="width:72px"></label>
+        <label class="small row" style="justify-content:flex-end">Economy no. <input id="seed" type="number" min="1" value="35" style="width:72px"></label>
         <button id="share">Copy replay link</button>
         <button id="csv">Download data (CSV)</button>
       </div>
@@ -173,7 +173,7 @@
   }
 
   function start(decisions) {
-    const seed = Math.max(1, Math.floor(Number($('seed').value) || 28));
+    const seed = Math.max(1, Math.floor(Number($('seed').value) || E.DEFAULTS.seed));
     game = new E.Game(scenarioId, { seed });
     for (const d of decisions || []) game.meeting(d);
     pending = { repo: game.player.repo, tax: game.player.taxRate, spend: game.player.govShare };
@@ -361,7 +361,7 @@
       const m = /^r(\d+)t(\d+)s(\d+)(?:x([mos]))?$/.exec(t);
       return m ? { repo: m[1] / 10000, tax: m[2] / 1000, spend: m[3] / 1000, shock: m[4] ? keyOf[m[4]] : '' } : null;
     }).filter(Boolean);
-    return { scenario: parts[1], seed: Number(parts[2]) || 28, decisions };
+    return { scenario: parts[1], seed: Number(parts[2]) || E.DEFAULTS.seed, decisions };
   }
   $('share').onclick = async () => {
     const h = encode();

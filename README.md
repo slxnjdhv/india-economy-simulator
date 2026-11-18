@@ -31,7 +31,7 @@ Every rupee is tracked, and the accounts are checked every month.
 
 ## Status
 
-This is a prototype. Eleven model settings are calibrated to Indian data from 2015–2024 (RBI, MoSPI, PLFS and the World Bank). The calibration matches 10 features of the data: the level and variability of inflation, food-price swings, unemployment, the repo rate, the rupee's trend and volatility, imports, informality and GDP swings. Four more features were kept back as checks; two match and two don't (inflation persistence and the current account). See the [calibration report](https://slxnjdhv.github.io/india-economy-simulator/prototype/calibration.html). It is a teaching tool, not a forecast.
+This is a prototype. Sixteen model settings are calibrated to Indian data from 2015–2024 (RBI, MoSPI, PLFS and the World Bank). The calibration targets 11 features of the data: the level, variability and persistence of inflation, food-price swings, unemployment, the repo rate, the rupee's trend and volatility, imports, informality and GDP swings. Three more features were kept back as checks: two match, and the current account doesn't, because the model has no remittances. Inflation persistence is now matched too. See the [calibration report](https://slxnjdhv.github.io/india-economy-simulator/prototype/calibration.html). It is a teaching tool, not a forecast.
 
 ## Author
 

@@ -22,19 +22,28 @@ const SEEDS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 const YEARS = 20;
 
 // Parameters being calibrated: name, lower bound, upper bound, starting value
+// the original hand-tuned model, shown as the "before" column in the report
+const HAND = { foodSd: 0, foodRho: 0.9, oilSd: 0, oilRho: 0.9, demSd: 0, erNoise: 0.004, erRho: 0, worldInfl: 0.02, importShare: 0.15,
+  informal: 0.4, uNatural: 0.07, gstAuto: 1.3, anchor: 0.5, calvo: 0.35, wageIndex: 0, ruleSmooth: 0 };
+// starting point: the current defaults, with the new persistence settings set to plausible values
+const START = Object.assign({ foodRho: 0.97, oilRho: 0.97, erRho: 0.98, erNoise: 0.004, wageIndex: 0.5, ruleSmooth: 0.3 },
+  process.env.START ? JSON.parse(process.env.START) : {});
+const D0 = require('../prototype/engine.js').DEFAULTS;
 const SPACE = [
-  ['foodSd', 0, 0.10, 0.03],
-  ['oilSd', 0, 0.20, 0.05],
-  ['demSd', 0, 0.03, 0.01],
-  ['erNoise', 0, 0.02, 0.006],
-  ['worldInfl', 0, 0.05, 0.02],
-  ['importShare', 0.05, 0.40, 0.15],
-  ['informal', 0.1, 1.0, 0.6],
-  ['uNatural', 0.02, 0.10, 0.05],
-  ['gstAuto', 0.9, 1.7, 1.3],
-  ['anchor', 0, 0.95, 0.5],
-  ['calvo', 0.1, 0.7, 0.35],
-];
+  ['foodSd', 0, 0.10], ['foodRho', 0.7, 0.995],
+  ['oilSd', 0, 0.20], ['oilRho', 0.7, 0.995],
+  ['demSd', 0, 0.03],
+  ['erNoise', 0, 0.03], ['erRho', 0.5, 0.995],
+  ['worldInfl', 0, 0.05],
+  ['importShare', 0.05, 0.40],
+  ['informal', 0.1, 1.0],
+  ['uNatural', 0.02, 0.10],
+  ['gstAuto', 0.9, 1.7],
+  ['anchor', 0, 0.95],
+  ['calvo', 0.1, 0.7],
+  ['wageIndex', 0, 0.9],
+  ['ruleSmooth', 0, 0.8],
+].map(([k, lo, hi]) => [k, lo, hi, Math.min(hi - 0.02 * (hi - lo), Math.max(lo + 0.02 * (hi - lo), START[k] != null ? START[k] : D0[k]))]);
 // map an unbounded vector to the box with a logistic transform, so Nelder–Mead needs no constraints
 const toParams = x => Object.fromEntries(SPACE.map(([k, lo, hi], i) => [k, lo + (hi - lo) / (1 + Math.exp(-x[i]))]));
 const fromParams = p => SPACE.map(([k, lo, hi]) => { const z = (p[k] - lo) / (hi - lo); return Math.log(z / (1 - z)); });
@@ -96,7 +105,7 @@ async function nelderMead(f, x0, step, maxEvals) {
   const maxEvals = +process.argv[2] || 500;
   const D = require('../prototype/engine.js').DEFAULTS;
   const start = Object.fromEntries(SPACE.map(([k, , , v]) => [k, v]));
-  const before = await modelMoments({});
+  const before = await modelMoments(HAND);
   console.log(`Hand-tuned model: loss ${loss(before.m).toFixed(2)}`);
   const f = async x => loss((await modelMoments(toParams(x))).m);
   const t0 = Date.now();
@@ -116,7 +125,7 @@ async function nelderMead(f, x0, step, maxEvals) {
     date: new Date().toISOString().slice(0, 10), seeds: SEEDS, years: YEARS, evaluations: best.evals, seconds: Math.round((Date.now() - t0) / 1000),
     lossBefore: loss(before.m), lossAfter: loss(after.m), balanced: after.balanced && check.every(r => r.balanced),
     params: Object.fromEntries(Object.entries(params).map(([k, v]) => [k, +v.toPrecision(4)])),
-    handTuned: Object.fromEntries(SPACE.map(([k]) => [k, D[k] == null ? null : D[k]])),
+    handTuned: Object.fromEntries(SPACE.map(([k]) => [k, HAND[k] != null ? HAND[k] : D[k]])),
     moments: Object.fromEntries(Object.entries(T.moments).map(([k, t]) => [k, { data: t.value, before: before.m[k], after: after.m[k], range: spread[k], targeted: !!t.weight }])),
   };
   fs.writeFileSync(path.join(__dirname, 'result.json'), JSON.stringify(out, null, 1));

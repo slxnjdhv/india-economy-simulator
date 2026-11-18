@@ -66,7 +66,8 @@ You can download a summary CSV or every run as CSV. "Copy settings" saves the ex
   - it weakens when Indian inflation runs above world inflation, or when foreign debt builds up;
   - it strengthens when the RBI raises rates.
 - **Oil shocks** raise world oil prices, which widens the trade deficit and weakens the rupee.
-- **Random shocks.** Every month brings small random changes in harvests, world oil prices and demand, sized to match how much Indian inflation, food prices and growth vary.
+- **Random shocks.** Every month brings small random changes in harvests, world oil prices, demand and capital flows. They are long-lasting and sized to match how much Indian inflation, food prices, the rupee and growth vary.
+- **Wages and the RBI.** Wage-setters who trust the 4% target expect 4%; the rest link pay mostly to last year's inflation, which makes inflation persistent. The RBI smooths its rate changes.
 
 ## 4. Calibration report (`calibration.html`)
 Shows how closely the model matches Indian data for 2015–2024, the settings the calibration chose, and where the model still falls short. The data, sources and calibration program are in [`../calibration/`](../calibration/).
@@ -75,10 +76,10 @@ Shows how closely the model matches Indian data for 2015–2024, the settings th
 - `engine.js`: the agent-based model. Households, firms, a banking sector, the government and the RBI interact every month. The accounts are checked every month, and the same economy number always gives the same run.
 - `lessons-data.js`: the seven lessons, their experiments and grading.
 - `charts.js`, `shared.css`: charts and styles shared by all pages (light and dark themes).
-- `test.js`: 27 automated checks. They cover the rupee, trade, the informal sector and the calibration, and confirm that every lesson gives its intended result and grades correctly. Run `node test.js`.
+- `test.js`: 28 automated checks. They cover the rupee, trade, the informal sector and the calibration, and confirm that every lesson gives its intended result and grades correctly. Run `node test.js`.
 
 ## Known limits (prototype)
-- Teaching tool, not a forecast. Eleven settings are calibrated to 2015–2024 Indian data; the rest are hand-tuned. Inflation is less persistent than in India, and average inflation sits near the 4% target rather than India's 5%.
+- Teaching tool, not a forecast. Sixteen settings are calibrated to 2015–2024 Indian data; the rest are hand-tuned. Average inflation sits near the 4% target rather than India's 5%, and the model has no current-account deficit.
 - Two goods sectors and one simplified bank. There's no capital stock yet.
 - The rupee is set by relative prices, interest rates and foreign debt, with some random capital-flow noise. The RBI doesn't yet use its dollar reserves to steady it.
 - The labour market is split: informal workers can't move into formal jobs. Real-world movement between the two sectors isn't modelled yet.

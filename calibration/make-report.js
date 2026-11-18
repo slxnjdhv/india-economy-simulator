@@ -19,8 +19,13 @@ const LABELS = {
   gstAuto: ['GST level', 'GST relative to the tax lost on informal wages'],
   anchor: ['Expectations anchoring', 'How strongly expected inflation sticks to the 4% target (0–1)'],
   calvo: ['Price flexibility', 'Share of firms that change their prices each month'],
+  foodRho: ['Persistence of harvest shocks', 'Share of this month’s harvest shock still present next month'],
+  oilRho: ['Persistence of oil-price shocks', 'Share of this month’s oil-price shock still present next month'],
+  erRho: ['Persistence of capital-flow swings', 'How long swings in the rupee’s underlying value last'],
+  wageIndex: ['Wage indexation', 'Share of wage rises linked to last year’s inflation rather than expected inflation'],
+  ruleSmooth: ['RBI rate smoothing', 'Share of the previous repo rate the RBI keeps at each meeting'],
 };
-const PCT_P = new Set(['worldInfl', 'importShare', 'informal', 'uNatural', 'calvo']);
+const PCT_P = new Set(['worldInfl', 'importShare', 'informal', 'uNatural', 'calvo', 'wageIndex']);
 const fmtP = (k, v) => v == null ? '—' : PCT_P.has(k) ? (100 * v).toFixed(1) + '%' : (+v).toFixed(3);
 const PCT_M = k => k !== 'inflAc1';
 const fmtM = (k, v) => v == null || !isFinite(v) ? '—' : PCT_M(k) ? (100 * v).toFixed(1) + '%' : v.toFixed(2);
@@ -100,8 +105,8 @@ const html = `<!doctype html>
       <li>Definitions differ. Model unemployment is matched to PLFS usual-status unemployment, and the model’s trade balance is compared with India’s current account, which also includes remittances that the model leaves out.</li>
       <li>The model has no trend growth, so only the size of swings in GDP growth is compared.</li>
       <li><b>Average inflation is too low.</b> The model averages about 4%, India about 5%. In the model the RBI meets its 4% target on average, while India’s inflation ran above target, especially in 2020–22.</li>
-      <li><b>Inflation is not persistent enough.</b> India’s inflation stays high or low for a year or more; the model’s swings fade faster. This is the main thing to fix next, probably with slower-adjusting expectations or wage contracts.</li>
-      <li><b>World inflation is set low (about 0.6%).</b> It stands in for every reason the rupee drifts down by about 3% a year, such as capital flows, not only price differences.</li>
+      <li><b>Inflation persistence is now close but slightly low.</b> India’s figure is 0.23; the model’s is about 0.12. With only ten years of data, India’s figure is uncertain by roughly ±0.3. The model’s persistence comes from two sources. Wage-setters who don’t trust the 4% target link pay to last year’s inflation. And oil, harvest and capital-flow shocks are long-lasting, as they are in reality. An earlier version swung the wrong way (−0.3), because its shocks faded within months and its RBI over-corrected.</li>
+      <li><b>World inflation is set low (under 1%).</b> It stands in for every reason the rupee drifts down by about 3% a year, such as capital flows, not only price differences.</li>
       <li><b>No current-account deficit.</b> The model has no remittances or foreign investment, so its trade balances out over time, while India runs a deficit of about 1% of GDP.</li>
       <li><b>GDP swings are a little too large</b> (about 2.0% against India’s 1.4%).</li>
     </ol>

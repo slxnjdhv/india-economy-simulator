@@ -48,7 +48,7 @@ const T = {
     inflSd: m(sd(infl), 0.004, 1, 'CPI inflation, standard deviation across years'),
     foodSd: m(sd(food), 0.008, 1, 'Food (CFPI) inflation, standard deviation'),
     coreSd: core.length > 3 ? m(sd(core), 0.005, 0, 'Core inflation, standard deviation (not targeted: used to check the model)') : undefined,
-    inflAc1: m(ac1(infl), 0.3, 0, 'CPI inflation, year-to-year persistence (not targeted)'),
+    inflAc1: m(ac1(infl), 0.15, 1, 'CPI inflation, year-to-year persistence (autocorrelation)'),
     uMean: m(mean(ur), 0.005, 1, 'PLFS unemployment, usual status, age 15+, mean'),
     repoMean: m(mean(repo), 0.004, 1, 'RBI repo rate, mean'),
     repoSd: m(sd(repo), 0.004, 0, 'RBI repo rate, standard deviation (not targeted)'),

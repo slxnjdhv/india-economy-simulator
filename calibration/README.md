@@ -1,6 +1,6 @@
 # Calibration
 
-This folder calibrates the Economy Lab model to Indian data from 2015–2024 by the **simulated method of moments**. The model runs many simulated economies. The calibration program then adjusts eleven settings until the economies' summary statistics match the data.
+This folder calibrates the Economy Lab model to Indian data from 2015–2024 by the **simulated method of moments**. The model runs many simulated economies. The calibration program then adjusts sixteen settings until the economies' summary statistics match the data.
 
 | File | What it does |
 |---|---|
@@ -16,4 +16,4 @@ To reproduce:
 node build-targets.js && node calibrate.js 700 && node make-report.js
 ```
 
-A full run takes about 8 minutes on a 10-core laptop. Then copy the values in `result.json` → `params` into `DEFAULTS` in `prototype/engine.js`, where they are marked `[cal]`.
+A full run takes about 10 minutes on a 10-core laptop. Then copy the values in `result.json` → `params` into `DEFAULTS` in `prototype/engine.js`, where they are marked `[cal]`.

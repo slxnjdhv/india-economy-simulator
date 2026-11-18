@@ -131,13 +131,13 @@
         'If people believe the RBI will meet the target, their expectations are <b>anchored</b>. Workers don’t demand big pay rises after a temporary shock, so firms don’t keep raising prices.',
         'Here an oil shock hits two identical economies. In one, people trust the 4% target. In the other, they expect future inflation to look like recent inflation.',
       ],
-      setup: ['Two copies of the same economy, with the same luck.', 'Oil prices spike in month 3 and costs rise for every firm.', 'Anchored: expectations stay 90% tied to the 4% target. Unanchored: expectations follow recent inflation only.', 'The repo rate is held unchanged.'],
+      setup: ['Two copies of the same economy, with the same luck.', 'World oil prices double in month 3, raising costs for every firm.', 'From month 1, anchored: 90% of people trust the 4% target. Unanchored: nobody does, so expectations and wage claims follow recent inflation.', 'The repo rate is held unchanged.'],
       predict: { q: 'After the oil shock, in which economy will high inflation last longer?', options: ['The anchored economy', 'The unanchored economy', 'About the same'],
         actual: d => anchorCase(d) },
       async run(seed, tick) {
-        const sh = [{ key: 'oil', start: 2 }];
-        const a = run(seed, { params: { anchor: 0.9 }, policy: { mode: 'fixed' }, shocks: sh }); await tick(0.5);
-        const u = run(seed, { params: { anchor: 0 }, policy: { mode: 'fixed' }, shocks: sh }); await tick(1);
+        const sh = [{ key: 'oil', start: 2, depth: 1.0 }];
+        const a = run(seed, { paramsAfter: { anchor: 0.9 }, policy: { mode: 'fixed' }, shocks: sh }); await tick(0.5);
+        const u = run(seed, { paramsAfter: { anchor: 0 }, policy: { mode: 'fixed' }, shocks: sh }); await tick(1);
         return { a, u };
       },
       charts: (d, c) => {
